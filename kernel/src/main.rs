@@ -2,27 +2,10 @@
 #![no_main] // disable all Rust-level entry points
 
 use bootloader_api::{BootInfo, entry_point};
-use kernel::prelude::*;
-
-#[derive(Debug, Clone, Copy, PartialEq, Eq)]
-#[repr(u32)]
-pub enum QemuExitCode {
-    Success = 0x10,
-    Failed = 0x11,
-}
-
-pub fn exit_qemu(exit_code: QemuExitCode) -> ! {
-    use x86_64::instructions::{nop, port::Port};
-
-    unsafe {
-        let mut port = Port::new(0xf4);
-        port.write(exit_code as u32);
-    }
-
-    loop {
-        nop();
-    }
-}
+use kernel::{
+    prelude::*,
+    qemu::{QemuExitCode, exit_qemu},
+};
 
 entry_point!(kernel_main);
 
