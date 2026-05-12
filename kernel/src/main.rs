@@ -2,7 +2,7 @@
 #![no_main] // disable all Rust-level entry points
 
 use bootloader_api::{BootInfo, entry_point};
-use core::fmt::Write;
+use kernel::prelude::*;
 
 #[derive(Debug, Clone, Copy, PartialEq, Eq)]
 #[repr(u32)]
@@ -24,18 +24,11 @@ pub fn exit_qemu(exit_code: QemuExitCode) -> ! {
     }
 }
 
-pub fn serial() -> uart_16550::SerialPort {
-    let mut port = unsafe { uart_16550::SerialPort::new(0x3F8) };
-    port.init();
-    port
-}
-
 entry_point!(kernel_main);
 
 fn kernel_main(boot_info: &'static mut BootInfo) -> ! {
-    let mut port = serial();
-    writeln!(port, "Entered kernel with boot info: {boot_info:?}").unwrap();
-    writeln!(port, "\n=(^.^)= meow\n").unwrap();
+    kernel::init();
+    serial_println!("Entered kernel with boot info: {boot_info:?}");
     exit_qemu(QemuExitCode::Success);
 }
 
@@ -43,6 +36,6 @@ fn kernel_main(boot_info: &'static mut BootInfo) -> ! {
 #[panic_handler]
 #[cfg(not(test))]
 fn panic(info: &core::panic::PanicInfo) -> ! {
-    let _ = writeln!(serial(), "PANIC: {info}");
+    serial_println!("PANIC: {info}");
     exit_qemu(QemuExitCode::Failed);
 }
