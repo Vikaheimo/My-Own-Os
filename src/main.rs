@@ -1,73 +1,134 @@
-/// Copied from https://github.com/rust-osdev/bootloader/blob/main/examples/basic/src/main.rs
 use ovmf_prebuilt::{Arch, FileType, Prebuilt, Source};
 use std::env;
 use std::process::{Command, exit};
 
 fn main() {
-    // read env variables that were set in build script
-    let uefi_path = env!("UEFI_PATH");
-    let bios_path = env!("BIOS_PATH");
-
-    // parse mode from CLI
     let args: Vec<String> = env::args().collect();
     let prog = &args[0];
 
-    // choose whether to start the UEFI or BIOS image
-    let uefi = match args.get(1).map(|s| s.to_lowercase()) {
-        Some(ref s) if s == "uefi" => true,
-        Some(ref s) if s == "bios" => false,
-        Some(ref s) if s == "-h" || s == "--help" => {
-            println!("Usage: {prog} [uefi|bios]");
-            println!("  uefi  - boot using OVMF (UEFI)");
-            println!("  bios  - boot using legacy BIOS");
-            exit(0);
+    let mode = args.get(1).map(|s| s.as_str());
+    let firmware = args.get(2).map(|s| s.as_str());
+
+    match (mode, firmware) {
+        (Some("uefi"), None) => run_single(false, "uefi", prog),
+        (Some("bios"), None) => run_single(false, "bios", prog),
+
+        (Some("test"), Some(fw)) => run_single(true, fw, prog),
+
+        (Some("test-all"), Some(fw)) => run_all(fw, prog),
+
+        _ => usage_and_exit(prog),
+    }
+}
+
+fn run_single(test_mode: bool, firmware: &str, prog: &str) {
+    let uefi = parse_firmware(firmware, prog);
+
+    let prefix = if test_mode { "TEST_KERNEL" } else { "KERNEL" };
+
+    let image = get_image(prefix, uefi).unwrap_or_else(|| {
+        eprintln!("Missing image for {prefix}");
+        exit(1);
+    });
+
+    exit(run_qemu(&image, uefi));
+}
+
+fn run_all(firmware: &str, prog: &str) {
+    let uefi = parse_firmware(firmware, prog);
+
+    let tests = ["TEST_KERNEL", "TEST_PANIC", "TEST_STACK_OVERFLOW"];
+
+    for test in tests {
+        if let Some(image) = get_image(test, uefi) {
+            println!("Running {test}...");
+            let result = run_qemu(&image, uefi);
+
+            if result != 0 {
+                eprintln!("❌ {test} failed");
+                exit(1);
+            }
+
+            println!("✅ {test} passed");
         }
-        _ => {
-            eprintln!("Usage: {prog} [uefi|bios]");
-            exit(1);
-        }
+    }
+
+    println!("🎉 All tests passed!");
+    exit(0);
+}
+
+fn get_image(prefix: &str, uefi: bool) -> Option<String> {
+    let key = if uefi {
+        format!("{prefix}_UEFI_PATH")
+    } else {
+        format!("{prefix}_BIOS_PATH")
     };
 
+    env::var(&key).ok()
+}
+
+fn run_qemu(image: &str, uefi: bool) -> i32 {
     let mut cmd = Command::new("qemu-system-x86_64");
-    // print serial output to the shell
+
     cmd.arg("-serial").arg("mon:stdio");
-    // don't display video output
     cmd.arg("-display").arg("none");
-    // enable the guest to exit qemu
     cmd.arg("-device")
         .arg("isa-debug-exit,iobase=0xf4,iosize=0x04");
-    // Stop for triple faults
     cmd.arg("-no-reboot");
-    cmd.arg("-d").arg("int,cpu_reset");
 
     if uefi {
         let prebuilt =
-            Prebuilt::fetch(Source::LATEST, "target/ovmf").expect("failed to update prebuilt");
+            Prebuilt::fetch(Source::LATEST, "target/ovmf").expect("Failed to fetch OVMF");
 
         let code = prebuilt.get_file(Arch::X64, FileType::Code);
         let vars = prebuilt.get_file(Arch::X64, FileType::Vars);
 
-        cmd.arg("-drive")
-            .arg(format!("format=raw,file={uefi_path}"));
+        cmd.arg("-drive").arg(format!("format=raw,file={image}"));
+
         cmd.arg("-drive").arg(format!(
             "if=pflash,format=raw,unit=0,file={},readonly=on",
             code.display()
         ));
-        // copy vars and enable rw instead of snapshot if you want to store data (e.g. enroll secure boot keys)
+
         cmd.arg("-drive").arg(format!(
             "if=pflash,format=raw,unit=1,file={},snapshot=on",
             vars.display()
         ));
     } else {
-        cmd.arg("-drive")
-            .arg(format!("format=raw,file={bios_path}"));
+        cmd.arg("-drive").arg(format!("format=raw,file={image}"));
     }
 
-    let mut child = cmd.spawn().expect("failed to start qemu-system-x86_64");
-    let status = child.wait().expect("failed to wait on qemu");
-    match status.code().unwrap_or(1) {
-        0x10 => 0, // success
-        0x11 => 1, // failure
-        _ => 2,    // unknown fault
-    };
+    let status = cmd.spawn().unwrap().wait().unwrap();
+    let raw = status.code().unwrap_or(1);
+
+    if raw & 1 == 1 {
+        let decoded = raw >> 1;
+        if decoded == 0x10 {
+            return 0;
+        }
+        if decoded == 0x11 {
+            return 1;
+        }
+    }
+
+    2
+}
+
+fn parse_firmware(firmware: &str, prog: &str) -> bool {
+    match firmware {
+        "uefi" => true,
+        "bios" => false,
+        _ => usage_and_exit(prog),
+    }
+}
+
+fn usage_and_exit(prog: &str) -> ! {
+    eprintln!("Usage:");
+    eprintln!("  {prog} uefi");
+    eprintln!("  {prog} bios");
+    eprintln!("  {prog} test uefi");
+    eprintln!("  {prog} test bios");
+    eprintln!("  {prog} test-all uefi");
+    eprintln!("  {prog} test-all bios");
+    exit(1);
 }

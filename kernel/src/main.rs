@@ -15,9 +15,7 @@ fn kernel_main(boot_info: &'static mut BootInfo) -> ! {
     exit_qemu(QemuExitCode::Success);
 }
 
-/// This function is called on panic.
 #[panic_handler]
-#[cfg(not(test))]
 fn panic(info: &core::panic::PanicInfo) -> ! {
     serial_println!("PANIC: {info}");
     exit_qemu(QemuExitCode::Failed);

@@ -1,26 +1,44 @@
-/// Copied from: https://github.com/rust-osdev/bootloader/blob/main/examples/basic/build.rs
-use std::path::PathBuf;
+use std::path::{Path, PathBuf};
+
+fn build_image(name: &str, env_var: &str, out_dir: &Path) {
+    let kernel = PathBuf::from(std::env::var_os(env_var).unwrap());
+
+    let uefi = out_dir.join(format!("{name}_uefi.img"));
+    let bios = out_dir.join(format!("{name}_bios.img"));
+
+    bootloader::UefiBoot::new(&kernel)
+        .create_disk_image(&uefi)
+        .unwrap();
+
+    bootloader::BiosBoot::new(&kernel)
+        .create_disk_image(&bios)
+        .unwrap();
+
+    println!(
+        "cargo:rustc-env={}_UEFI_PATH={}",
+        name.to_uppercase(),
+        uefi.display()
+    );
+
+    println!(
+        "cargo:rustc-env={}_BIOS_PATH={}",
+        name.to_uppercase(),
+        bios.display()
+    );
+}
 
 fn main() {
-    // set by cargo, build scripts should use this directory for output files
     let out_dir = PathBuf::from(std::env::var_os("OUT_DIR").unwrap());
-    // set by cargo's artifact dependency feature, see
-    // https://doc.rust-lang.org/nightly/cargo/reference/unstable.html#artifact-dependencies
-    let kernel = PathBuf::from(std::env::var_os("CARGO_BIN_FILE_KERNEL_kernel").unwrap());
 
-    // create an UEFI disk image (optional)
-    let uefi_path = out_dir.join("uefi.img");
-    bootloader::UefiBoot::new(&kernel)
-        .create_disk_image(&uefi_path)
-        .unwrap();
+    build_image("kernel", "CARGO_BIN_FILE_KERNEL_kernel", &out_dir);
 
-    // create a BIOS disk image
-    let bios_path = out_dir.join("bios.img");
-    bootloader::BiosBoot::new(&kernel)
-        .create_disk_image(&bios_path)
-        .unwrap();
+    build_image("test_kernel", "CARGO_BIN_FILE_KERNEL_test_kernel", &out_dir);
 
-    // pass the disk image paths as env variables to the
-    println!("cargo:rustc-env=UEFI_PATH={}", uefi_path.display());
-    println!("cargo:rustc-env=BIOS_PATH={}", bios_path.display());
+    build_image("test_panic", "CARGO_BIN_FILE_KERNEL_test_panic", &out_dir);
+
+    build_image(
+        "test_stack_overflow",
+        "CARGO_BIN_FILE_KERNEL_test_stack_overflow",
+        &out_dir,
+    );
 }
