@@ -17,8 +17,8 @@ fn main(_boot_info: &'static mut BootInfo) -> ! {
 
     overflow();
 
-    serial_println!("Test passed!");
-    exit_qemu(QemuExitCode::Success);
+    serial_println!("This should not happen!");
+    exit_qemu(QemuExitCode::Failed);
 }
 
 #[allow(unconditional_recursion)]
@@ -27,8 +27,7 @@ fn overflow() {
 }
 
 #[panic_handler]
-pub fn test_panic_handler(info: &core::panic::PanicInfo) -> ! {
-    serial_println!("[failed]");
-    serial_println!("Error: {}", info);
-    exit_qemu(QemuExitCode::Failed);
+pub fn test_panic_handler(_info: &core::panic::PanicInfo) -> ! {
+    serial_println!("Test passed!");
+    exit_qemu(QemuExitCode::Success)
 }
