@@ -15,7 +15,11 @@ pub fn init() {
 
         idt.breakpoint.set_handler_fn(breakpoint_handler);
         idt.page_fault.set_handler_fn(page_fault_handler);
-        idt.double_fault.set_handler_fn(double_fault_handler);
+        unsafe {
+            idt.double_fault
+                .set_handler_fn(double_fault_handler)
+                .set_stack_index(crate::gdt::DOUBLE_FAULT_IST_INDEX as u16);
+        }
         idt.general_protection_fault
             .set_handler_fn(general_protection_fault);
 
@@ -30,7 +34,10 @@ extern "x86-interrupt" fn breakpoint_handler(stack_frame: InterruptStackFrame) {
     serial_println!("{:#?}", stack_frame)
 }
 
-extern "x86-interrupt" fn double_fault_handler(stack_frame: InterruptStackFrame, _: u64) -> ! {
+extern "x86-interrupt" fn double_fault_handler(
+    stack_frame: InterruptStackFrame,
+    _error_code: u64,
+) -> ! {
     serial_println!("EXCEPTION: DOUBLE FAULT");
     serial_println!("{:#?}", stack_frame);
 
@@ -49,7 +56,10 @@ extern "x86-interrupt" fn page_fault_handler(
     exit_qemu(crate::qemu::QemuExitCode::Failed);
 }
 
-extern "x86-interrupt" fn general_protection_fault(stack_frame: InterruptStackFrame, error_code: u64) {
+extern "x86-interrupt" fn general_protection_fault(
+    stack_frame: InterruptStackFrame,
+    error_code: u64,
+) {
     serial_println!("EXCEPTION: GENERAL PROTECTION FAULT");
     serial_println!("Error Code: {:#x}", error_code);
     serial_println!("{:#?}", stack_frame);
