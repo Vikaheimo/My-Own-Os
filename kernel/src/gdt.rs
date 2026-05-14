@@ -16,8 +16,10 @@ static mut DOUBLE_FAULT_STACK: [u8; DOUBLE_FAULT_STACK_SIZE] = [0; DOUBLE_FAULT_
 
 static TSS: Once<TaskStateSegment> = Once::new();
 
+#[derive(Debug, Clone, Copy)]
 struct Selectors {
     code_selector: SegmentSelector,
+    data_selector: SegmentSelector,
     tss_selector: SegmentSelector,
 }
 
@@ -38,12 +40,14 @@ pub fn init() {
 
         let code_selector = gdt.append(Descriptor::kernel_code_segment());
         let tss_selector = gdt.append(Descriptor::tss_segment(tss));
+        let data_selector = gdt.append(Descriptor::kernel_data_segment());
 
         (
             gdt,
             Selectors {
                 code_selector,
                 tss_selector,
+                data_selector,
             },
         )
     });
@@ -52,6 +56,7 @@ pub fn init() {
 
     unsafe {
         CS::set_reg(gdt.1.code_selector);
+        x86_64::instructions::segmentation::SS::set_reg(gdt.1.data_selector);
         load_tss(gdt.1.tss_selector);
     }
 }
