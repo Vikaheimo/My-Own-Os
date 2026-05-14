@@ -16,6 +16,8 @@ pub fn init() {
         idt.breakpoint.set_handler_fn(breakpoint_handler);
         idt.page_fault.set_handler_fn(page_fault_handler);
         idt.double_fault.set_handler_fn(double_fault_handler);
+        idt.general_protection_fault
+            .set_handler_fn(general_protection_fault);
 
         idt
     });
@@ -42,6 +44,14 @@ extern "x86-interrupt" fn page_fault_handler(
     serial_println!("EXCEPTION: PAGE FAULT");
     serial_println!("Accessed Address: {:?}", Cr2::read());
     serial_println!("Error Code: {:?}", error_code);
+    serial_println!("{:#?}", stack_frame);
+
+    exit_qemu(crate::qemu::QemuExitCode::Failed);
+}
+
+extern "x86-interrupt" fn general_protection_fault(stack_frame: InterruptStackFrame, error_code: u64) {
+    serial_println!("EXCEPTION: GENERAL PROTECTION FAULT");
+    serial_println!("Error Code: {:#x}", error_code);
     serial_println!("{:#?}", stack_frame);
 
     exit_qemu(crate::qemu::QemuExitCode::Failed);
