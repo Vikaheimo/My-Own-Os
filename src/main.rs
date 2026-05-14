@@ -36,6 +36,9 @@ fn main() {
     // enable the guest to exit qemu
     cmd.arg("-device")
         .arg("isa-debug-exit,iobase=0xf4,iosize=0x04");
+    // Stop for triple faults
+    cmd.arg("-no-reboot");
+    cmd.arg("-d").arg("int,cpu_reset");
 
     if uefi {
         let prebuilt =
