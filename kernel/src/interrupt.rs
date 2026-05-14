@@ -1,5 +1,3 @@
-use crate::qemu::exit_qemu;
-
 use super::prelude::*;
 use spin::Once;
 use x86_64::{
@@ -38,31 +36,27 @@ extern "x86-interrupt" fn double_fault_handler(
     stack_frame: InterruptStackFrame,
     _error_code: u64,
 ) -> ! {
-    serial_println!("EXCEPTION: DOUBLE FAULT");
-    serial_println!("{:#?}", stack_frame);
-
-    exit_qemu(crate::qemu::QemuExitCode::Failed);
+    panic!("EXCEPTION: DOUBLE FAULT\n {:#?}", stack_frame)
 }
 
 extern "x86-interrupt" fn page_fault_handler(
     stack_frame: InterruptStackFrame,
     error_code: PageFaultErrorCode,
 ) {
-    serial_println!("EXCEPTION: PAGE FAULT");
-    serial_println!("Accessed Address: {:?}", Cr2::read());
-    serial_println!("Error Code: {:?}", error_code);
-    serial_println!("{:#?}", stack_frame);
-
-    exit_qemu(crate::qemu::QemuExitCode::Failed);
+    panic!(
+        "EXCEPTION: PAGE FAULT\nAccessed Address: {:?}\nError Code: {:?}\n{:#?}",
+        Cr2::read(),
+        error_code,
+        stack_frame
+    )
 }
 
 extern "x86-interrupt" fn general_protection_fault(
     stack_frame: InterruptStackFrame,
     error_code: u64,
 ) {
-    serial_println!("EXCEPTION: GENERAL PROTECTION FAULT");
-    serial_println!("Error Code: {:#x}", error_code);
-    serial_println!("{:#?}", stack_frame);
-
-    exit_qemu(crate::qemu::QemuExitCode::Failed);
+    panic!(
+        "EXCEPTION: GENERAL PROTECTION FAULT\nError Code: {:#x}\n{:#?}",
+        error_code, stack_frame
+    )
 }
