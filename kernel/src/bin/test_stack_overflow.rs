@@ -8,7 +8,7 @@ use kernel::{
     serial_println,
 };
 
-entry_point!(main);
+entry_point!(main, config = &kernel::BOOTLOADER_CONFIG);
 
 fn main(_boot_info: &'static mut BootInfo) -> ! {
     init();

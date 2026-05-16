@@ -13,6 +13,12 @@ pub fn init() {
     interrupt::init();
 }
 
+pub const BOOTLOADER_CONFIG: bootloader_api::BootloaderConfig = {
+    let mut config = bootloader_api::BootloaderConfig::new_default();
+    config.mappings.physical_memory = Some(bootloader_api::config::Mapping::Dynamic);
+    config
+};
+
 pub mod prelude {
     pub use crate::{serial_print, serial_println};
 }

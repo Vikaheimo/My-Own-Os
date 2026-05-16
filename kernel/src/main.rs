@@ -3,11 +3,12 @@
 
 use bootloader_api::{BootInfo, entry_point};
 use kernel::{
+    BOOTLOADER_CONFIG,
     prelude::*,
     qemu::{QemuExitCode, exit_qemu},
 };
 
-entry_point!(kernel_main);
+entry_point!(kernel_main, config = &BOOTLOADER_CONFIG);
 
 fn kernel_main(boot_info: &'static mut BootInfo) -> ! {
     kernel::init();
