@@ -37,7 +37,7 @@ fn run_single(test_mode: bool, firmware: &str, prog: &str) {
 fn run_all(firmware: &str, prog: &str) {
     let uefi = parse_firmware(firmware, prog);
 
-    let tests = ["TEST_KERNEL", "TEST_PANIC", "TEST_STACK_OVERFLOW"];
+    let tests = ["TEST_KERNEL", "TEST_PANIC", "TEST_STACK_OVERFLOW", "TEST_MEMORY"];
 
     for test in tests {
         if let Some(image) = get_image(test, uefi) {

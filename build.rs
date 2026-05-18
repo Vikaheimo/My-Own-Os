@@ -41,4 +41,6 @@ fn main() {
         "CARGO_BIN_FILE_KERNEL_test_stack_overflow",
         &out_dir,
     );
+
+    build_image("test_memory", "CARGO_BIN_FILE_KERNEL_test_memory", &out_dir);
 }
