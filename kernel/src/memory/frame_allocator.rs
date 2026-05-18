@@ -123,6 +123,8 @@ impl BootInfoFrameAllocator {
 /// The correctness of this implementation depends on the
 /// bootloader-provided memory map being accurate and not marking
 /// reserved or in-use memory as `Usable`.
+// SAFETY: `allocate_frame` yields unique, 4KiB-aligned, usable frames,
+// so this type upholds the `FrameAllocator` contract.
 unsafe impl FrameAllocator<Size4KiB> for BootInfoFrameAllocator {
     fn allocate_frame(&mut self) -> Option<x86_64::structures::paging::PhysFrame<Size4KiB>> {
         let frame_address = self.allocate_frame()?;

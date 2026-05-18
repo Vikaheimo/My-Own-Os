@@ -13,6 +13,8 @@ pub fn init() {
 
         idt.breakpoint.set_handler_fn(breakpoint_handler);
         idt.page_fault.set_handler_fn(page_fault_handler);
+        // SAFETY: The configured stack index points to a valid IST entry
+        // initialized in the TSS during early boot.
         unsafe {
             idt.double_fault
                 .set_handler_fn(double_fault_handler)

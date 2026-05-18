@@ -40,6 +40,8 @@ pub fn init(boot_info: &'static bootloader_api::BootInfo) -> MemoryContext {
     let frame_allocator =
         frame_allocator::BootInfoFrameAllocator::init(&boot_info.memory_regions, phys_offset);
 
+    // SAFETY: The bootloader provides a valid physical memory offset mapping,
+    // and memory initialization runs once during early kernel boot.
     let mapper = unsafe { paging::init_offset_page_table(phys_offset) };
 
     MemoryContext {

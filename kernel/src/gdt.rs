@@ -54,6 +54,8 @@ pub fn init() {
 
     gdt.0.load();
 
+    // SAFETY: The GDT and TSS were initialized above and the selectors
+    // come from that loaded GDT, so loading segment registers and TSS is valid.
     unsafe {
         CS::set_reg(gdt.1.code_selector);
         x86_64::instructions::segmentation::SS::set_reg(gdt.1.data_selector);

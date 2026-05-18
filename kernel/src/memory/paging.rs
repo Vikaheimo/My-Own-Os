@@ -17,7 +17,11 @@ use x86_64::{
 pub(crate) unsafe fn init_offset_page_table(
     physical_memory_offset: u64,
 ) -> OffsetPageTable<'static> {
+    // SAFETY: The caller guarantees that `physical_memory_offset`
+    // correctly maps physical memory, so obtaining the active L4 table is valid.
     let level_4_table: &mut PageTable = unsafe { active_level_4_table(physical_memory_offset) };
+    // SAFETY: `level_4_table` refers to the active level 4 table and
+    // `physical_memory_offset` is a valid physical memory mapping.
     unsafe { OffsetPageTable::new(level_4_table, VirtAddr::new(physical_memory_offset)) }
 }
 
@@ -42,5 +46,7 @@ unsafe fn active_level_4_table(physical_memory_offset: u64) -> &'static mut Page
     let virtual_address = physical_address + physical_memory_offset;
 
     let page_table_ptr = virtual_address as *mut PageTable;
+    // SAFETY: `page_table_ptr` is derived from the active CR3 frame and a
+    // valid physical-memory offset mapping, so it points to the active L4 table.
     unsafe { &mut *page_table_ptr }
 }
