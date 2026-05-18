@@ -4,6 +4,7 @@
 
 pub mod gdt;
 pub mod interrupt;
+pub mod memory;
 pub mod qemu;
 pub mod serial;
 

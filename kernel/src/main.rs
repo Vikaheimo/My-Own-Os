@@ -13,6 +13,11 @@ entry_point!(kernel_main, config = &BOOTLOADER_CONFIG);
 fn kernel_main(boot_info: &'static mut BootInfo) -> ! {
     kernel::init();
     serial_println!("Entered kernel with boot info: {boot_info:?}");
+
+    let _memory = kernel::memory::init(boot_info);
+
+    serial_println!("Memory initialized.");
+
     exit_qemu(QemuExitCode::Success);
 }
 
