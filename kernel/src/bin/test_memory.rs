@@ -1,6 +1,8 @@
 #![no_std]
 #![no_main]
 
+extern crate alloc;
+
 use bootloader_api::{BootInfo, entry_point};
 use kernel::{
     init, memory,
@@ -21,6 +23,7 @@ fn main(boot_info: &'static mut BootInfo) -> ! {
 
     let mut memory = kernel::memory::init(boot_info);
     test_mapping(&mut memory);
+    test_simple_allocation();
 
     serial_println!("Test passed!");
     exit_qemu(QemuExitCode::Success);
@@ -72,4 +75,16 @@ fn test_mapping(memory: &mut memory::MemoryContext) {
     assert_eq!(value, example_constant);
 
     serial_println!("Successfully verified mapped page.");
+}
+
+fn test_simple_allocation() {
+    let mut vec = alloc::vec::Vec::new();
+    for i in 0..1000 {
+        vec.push(i);
+    }
+
+    serial_println!("Vec length: {}", vec.len());
+    assert_eq!(vec.get(999), Some(999).as_ref());
+
+    serial_println!("Successfully allocated on the heap!")
 }
