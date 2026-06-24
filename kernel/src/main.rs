@@ -1,6 +1,8 @@
 #![no_std] // don't link the Rust standard library
 #![no_main] // disable all Rust-level entry points
 
+extern crate alloc;
+
 use bootloader_api::{BootInfo, entry_point};
 use kernel::{
     BOOTLOADER_CONFIG,
@@ -15,8 +17,10 @@ fn kernel_main(boot_info: &'static mut BootInfo) -> ! {
     serial_println!("Entered kernel with boot info: {boot_info:?}");
 
     let _memory = kernel::memory::init(boot_info);
-
     serial_println!("Memory initialized.");
+
+    let data = alloc::boxed::Box::new("Hello from the heap!");
+    serial_println!("Reading data from the heap: {}", data);
 
     exit_qemu(QemuExitCode::Success);
 }

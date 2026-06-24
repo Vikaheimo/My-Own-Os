@@ -4,6 +4,8 @@
 #![warn(clippy::missing_safety_doc)]
 #![warn(clippy::undocumented_unsafe_blocks)]
 
+extern crate alloc;
+
 pub mod gdt;
 pub mod interrupt;
 pub mod memory;
