@@ -1,3 +1,4 @@
+mod allocator;
 mod frame_allocator;
 mod heap;
 mod paging;
