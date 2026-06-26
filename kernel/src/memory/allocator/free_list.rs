@@ -6,7 +6,7 @@ use core::{
 
 use x86_64::align_up;
 
-use crate::{memory::allocator::KernelAllocator, serial_println};
+use crate::memory::allocator::KernelAllocator;
 
 #[repr(C)]
 #[derive(Debug, Clone, Copy)]
@@ -25,15 +25,20 @@ struct AllocationHeader {
 impl AllocationHeader {
     unsafe fn write_header(data_start: u64, block_start: *mut FreeBlock) {
         log::trace!(
-            "Writing allocation header: data: 0x{:x} block: 0x{:x}",
+            "Writing allocation header at ox{:x}. Block starts at: 0x{:x}",
             data_start,
             block_start as u64
         );
         let header_start = data_start - size_of::<AllocationHeader>() as u64;
         let ptr = header_start as *mut AllocationHeader;
         unsafe { (*ptr).block_start = block_start }
+    }
 
-        log::trace!("Allocation header written");
+    unsafe fn read_header(data_start: u64) -> AllocationHeader {
+        let header_start = data_start - size_of::<AllocationHeader>() as u64;
+        let ptr = header_start as *const AllocationHeader;
+
+        unsafe { *ptr }
     }
 }
 
@@ -169,11 +174,28 @@ unsafe impl KernelAllocator for FreeListAllocator {
         // No space for an allocation
         null_mut()
     }
+
     unsafe fn dealloc(&mut self, ptr: *mut u8, layout: Layout) {
         if ptr.is_null() {
+            log::error!("Tried to deallocate a null ptr!");
             return;
         }
+        let data_start = ptr as u64;
 
-        // TODO
+        log::debug!("De-allocation at 0x{:x}: {:?}", data_start, layout);
+        let header = unsafe { AllocationHeader::read_header(data_start) };
+        let block_size = data_start + layout.size() as u64 - header.block_start as u64;
+        log::trace!(
+            "New free block starts at 0x{:x}. Block size: 0x{:x}",
+            header.block_start as u64,
+            block_size
+        );
+
+        unsafe {
+            (*header.block_start).next = self.first as *mut FreeBlock;
+            (*header.block_start).size = block_size
+        }
+
+        self.first = header.block_start;
     }
 }
