@@ -3,9 +3,12 @@
 
 extern crate alloc;
 
+use core::alloc::GlobalAlloc;
+
 use bootloader_api::{BootInfo, entry_point};
 use kernel::{
-    init, memory,
+    init,
+    memory::{self, heap::GLOBAL_HEAP_ALLOCATOR},
     qemu::{QemuExitCode, exit_qemu},
 };
 use log::{error, info};
@@ -24,6 +27,7 @@ fn main(boot_info: &'static mut BootInfo) -> ! {
     let mut memory = kernel::memory::init(boot_info);
     test_mapping(&mut memory);
     test_simple_allocation();
+    test_unaligned_split_corruption();
 
     info!("Test passed!");
     exit_qemu(QemuExitCode::Success);
@@ -65,15 +69,12 @@ fn test_mapping(memory: &mut memory::MemoryContext) {
     unsafe {
         *ptr = example_constant;
     }
-
     info!("Wrote value.");
 
     let value = unsafe { *ptr };
-
     info!("Read value: {:#x}", value);
 
     assert_eq!(value, example_constant);
-
     info!("Successfully verified mapped page.");
 }
 
@@ -87,4 +88,32 @@ fn test_simple_allocation() {
     assert_eq!(vec.get(999), Some(999).as_ref());
 
     info!("Successfully allocated on the heap!");
+}
+
+/// This test should be verified by hand!
+/// Check that the allocations are correctly aligned!
+/// TODO: Automate this test
+pub fn test_unaligned_split_corruption() {
+    use core::alloc::Layout;
+    info!("Testing unaligned allocation!");
+
+    let layout_odd = Layout::from_size_align(5, 1).unwrap();
+
+    let ptr1 = unsafe { GLOBAL_HEAP_ALLOCATOR.alloc(layout_odd) };
+    assert!(!ptr1.is_null(), "First allocation failed");
+
+    let layout_next = Layout::from_size_align(8, 8).unwrap();
+    let ptr2 = unsafe { GLOBAL_HEAP_ALLOCATOR.alloc(layout_next) };
+    assert!(
+        !ptr2.is_null(),
+        "Second allocation failed due to header corruption"
+    );
+
+    // Clean up
+    unsafe {
+        GLOBAL_HEAP_ALLOCATOR.dealloc(ptr1, layout_odd);
+        GLOBAL_HEAP_ALLOCATOR.dealloc(ptr2, layout_next);
+    }
+
+    info!("Successfully allocated on the heap!")
 }

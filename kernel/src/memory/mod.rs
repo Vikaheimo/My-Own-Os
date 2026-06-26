@@ -1,6 +1,6 @@
 mod allocator;
 mod frame_allocator;
-mod heap;
+pub mod heap;
 mod paging;
 
 pub struct MemoryContext {
