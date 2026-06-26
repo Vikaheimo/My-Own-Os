@@ -8,12 +8,14 @@ extern crate alloc;
 
 pub mod gdt;
 pub mod interrupt;
+pub mod logger;
 pub mod memory;
 pub mod qemu;
 pub mod serial;
 
 pub fn init() {
     serial::init();
+    logger::init();
     gdt::init();
     interrupt::init();
 }
