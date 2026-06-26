@@ -1,4 +1,5 @@
 use super::prelude::*;
+use log::info;
 use spin::Once;
 use x86_64::{
     registers::control::Cr2,
@@ -27,6 +28,8 @@ pub fn init() {
     });
 
     idt.load();
+
+    info!("IDT loaded");
 }
 
 extern "x86-interrupt" fn breakpoint_handler(stack_frame: InterruptStackFrame) {

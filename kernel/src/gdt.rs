@@ -1,3 +1,4 @@
+use log::info;
 use spin::Once;
 use x86_64::{
     VirtAddr,
@@ -61,4 +62,6 @@ pub fn init() {
         x86_64::instructions::segmentation::SS::set_reg(gdt.1.data_selector);
         load_tss(gdt.1.tss_selector);
     }
+
+    info!("GDT loaded")
 }

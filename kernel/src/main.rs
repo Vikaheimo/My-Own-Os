@@ -6,27 +6,27 @@ extern crate alloc;
 use bootloader_api::{BootInfo, entry_point};
 use kernel::{
     BOOTLOADER_CONFIG,
-    prelude::*,
     qemu::{QemuExitCode, exit_qemu},
 };
+use log::{error, info};
 
 entry_point!(kernel_main, config = &BOOTLOADER_CONFIG);
 
 fn kernel_main(boot_info: &'static mut BootInfo) -> ! {
     kernel::init();
-    serial_println!("Entered kernel with boot info: {boot_info:?}");
+    info!("Entered kernel with boot info: {boot_info:?}");
 
     let _memory = kernel::memory::init(boot_info);
-    serial_println!("Memory initialized.");
+    info!("Memory initialized.");
 
     let data = alloc::boxed::Box::new("Hello from the heap!");
-    serial_println!("Reading data from the heap: {}", data);
+    info!("Reading data from the heap: {}", data);
 
     exit_qemu(QemuExitCode::Success);
 }
 
 #[panic_handler]
 fn panic(info: &core::panic::PanicInfo) -> ! {
-    serial_println!("PANIC: {info}");
+    error!("PANIC: {info}");
     exit_qemu(QemuExitCode::Failed);
 }

@@ -5,20 +5,20 @@ use bootloader_api::{BootInfo, entry_point};
 use kernel::{
     init,
     qemu::{QemuExitCode, exit_qemu},
-    serial_println,
 };
+use log::{error, info};
 
 entry_point!(main, config = &kernel::BOOTLOADER_CONFIG);
 
 fn main(_boot_info: &'static mut BootInfo) -> ! {
     init();
 
-    serial_println!("Running kernel tests...");
+    info!("Running kernel tests...");
 
     test_basic();
     test_breakpoint();
 
-    serial_println!("All tests passed!");
+    info!("All tests passed!");
     exit_qemu(QemuExitCode::Success);
 }
 
@@ -33,7 +33,7 @@ fn test_breakpoint() {
 
 #[panic_handler]
 pub fn test_panic_handler(info: &core::panic::PanicInfo) -> ! {
-    serial_println!("[failed]");
-    serial_println!("Error: {}", info);
+    error!("[failed]");
+    error!("Error: {}", info);
     exit_qemu(QemuExitCode::Failed);
 }
