@@ -20,18 +20,18 @@ struct FreeBlock {
 #[derive(Debug, Clone, Copy)]
 struct AllocationHeader {
     block_start: *mut FreeBlock,
+    block_size: u64,
 }
 
 impl AllocationHeader {
-    unsafe fn write_header(data_start: u64, block_start: *mut FreeBlock) {
-        log::trace!(
-            "Writing allocation header at 0x{:x}. Block starts at: 0x{:x}",
-            data_start,
-            block_start as u64
-        );
+    unsafe fn write_header(data_start: u64, block_start: *mut FreeBlock, block_size: u64) {
         let header_start = data_start - size_of::<AllocationHeader>() as u64;
         let ptr = header_start as *mut AllocationHeader;
-        unsafe { (*ptr).block_start = block_start }
+
+        unsafe {
+            (*ptr).block_start = block_start;
+            (*ptr).block_size = block_size;
+        }
     }
 
     unsafe fn read_header(data_start: u64) -> AllocationHeader {
@@ -83,55 +83,43 @@ impl FreeListAllocator {
 
 unsafe impl Send for FreeListAllocator {}
 
-const MIN_ALLOCATION_SIZE: u64 = 1;
-
 unsafe impl KernelAllocator for FreeListAllocator {
     unsafe fn alloc(&mut self, layout: Layout) -> *mut u8 {
         log::debug!("New allocation: {:?}", layout);
+
         unsafe {
             self.init();
         }
 
         let mut current = self.first;
         let mut previous: *mut FreeBlock = null_mut();
+        let header_size = size_of::<AllocationHeader>() as u64;
 
         while !current.is_null() {
             let current_block = unsafe { *current };
-
             let block_start = current as u64;
             let block_size = current_block.size;
             let block_end = block_start + block_size;
 
-            let header_size = size_of::<AllocationHeader>() as u64;
-
             let minimum_data_start = block_start + header_size;
             let aligned_start = align_up(minimum_data_start, layout.align() as u64);
+            let data_end = aligned_start + layout.size() as u64;
 
-            let required = (aligned_start - block_start) + layout.size() as u64;
+            let split_block_start = align_up(data_end, align_of::<FreeBlock>() as u64);
 
-            let block_is_too_small = required > block_size;
+            let block_is_too_small = data_end > block_end;
             if block_is_too_small {
                 previous = current;
                 current = current_block.next;
                 continue;
             }
 
-            unsafe {
-                AllocationHeader::write_header(aligned_start, current);
-            }
-
-            let data_end = block_start + required;
-            let split_block_size = block_end - data_end;
-            let required_size = header_size + MIN_ALLOCATION_SIZE;
-            let should_split = split_block_size > required_size;
+            // Determine if there's enough space left over to form a valid split block
+            let required_split_size = size_of::<FreeBlock>() as u64;
+            let should_split = (split_block_start + required_split_size) <= block_end;
 
             if !should_split {
-                log::trace!(
-                    "Cannot split block. Block Size: {}, required: {}",
-                    split_block_size,
-                    required_size
-                );
-
+                // Consume the ENTIRE block to avoid leaking or creating unaligned fragments
                 if previous.is_null() {
                     self.first = current_block.next;
                 } else {
@@ -140,18 +128,18 @@ unsafe impl KernelAllocator for FreeListAllocator {
                     }
                 }
 
+                unsafe {
+                    AllocationHeader::write_header(aligned_start, current, block_size);
+                }
+
+                log::debug!("Allocated {} bytes at 0x{:x}", block_size, block_start);
+
                 return aligned_start as *mut u8;
             }
-            log::trace!(
-                "Block needs to be split. Block Size: {}, required: {}",
-                split_block_size,
-                required_size
-            );
 
-            let split_block_start = data_end;
+            // Perform the split cleanly on an aligned boundary
+            let split_block_size = block_end - split_block_start;
             let split_block = split_block_start as *mut FreeBlock;
-
-            log::trace!("New split block at 0x{:x}", split_block_start);
 
             unsafe {
                 (*split_block).next = current_block.next;
@@ -166,33 +154,42 @@ unsafe impl KernelAllocator for FreeListAllocator {
                 }
             }
 
+            // The actual size consumed by this allocation block up to the split point
+            let allocated_total_size = split_block_start - block_start;
+            unsafe {
+                AllocationHeader::write_header(aligned_start, current, allocated_total_size);
+            }
+
+            log::debug!(
+                "Allocated {} bytes at 0x{:x}",
+                allocated_total_size,
+                block_start
+            );
+
             return aligned_start as *mut u8;
         }
-        log::error!("Allocation failed: No valid allocation location found!");
 
-        // No space for an allocation
+        log::error!("Failed to find a valid allocation location!");
         null_mut()
     }
 
-    unsafe fn dealloc(&mut self, ptr: *mut u8, layout: Layout) {
+    unsafe fn dealloc(&mut self, ptr: *mut u8, _layout: Layout) {
         if ptr.is_null() {
-            log::error!("Tried to deallocate a null ptr!");
+            log::error!("Trying to free a null pointer!");
             return;
         }
-        let data_start = ptr as u64;
 
-        log::debug!("De-allocation at 0x{:x}: {:?}", data_start, layout);
+        let data_start = ptr as u64;
         let header = unsafe { AllocationHeader::read_header(data_start) };
-        let block_size = data_start + layout.size() as u64 - header.block_start as u64;
-        log::trace!(
-            "New free block starts at 0x{:x}. Block size: 0x{:x}",
+        log::debug!(
+            "Deallocating {} bytes at 0x{:x}",
+            header.block_size,
             header.block_start as u64,
-            block_size
         );
 
         unsafe {
-            (*header.block_start).next = self.first as *mut FreeBlock;
-            (*header.block_start).size = block_size
+            (*header.block_start).next = self.first;
+            (*header.block_start).size = header.block_size;
         }
 
         self.first = header.block_start;
