@@ -28,6 +28,8 @@ impl AllocationHeader {
         let header_start = data_start - size_of::<AllocationHeader>() as u64;
         let ptr = header_start as *mut AllocationHeader;
 
+        // SAFETY: The caller must ensure that `data_start` is preceded by a valid,
+        // unallocated memory region large enough to fit an `AllocationHeader`.
         unsafe {
             (*ptr).block_start = block_start;
             (*ptr).block_size = block_size;
@@ -38,6 +40,8 @@ impl AllocationHeader {
         let header_start = data_start - size_of::<AllocationHeader>() as u64;
         let ptr = header_start as *const AllocationHeader;
 
+        // SAFETY: The caller must guarantee that `data_start` originates from a valid
+        // allocation previously managed by this allocator, meaning an initialized header exists.
         unsafe { *ptr }
     }
 }
@@ -72,6 +76,8 @@ impl FreeListAllocator {
 
         let block = aligned_start as *mut FreeBlock;
 
+        // SAFETY: The heap bounds are guaranteed valid by the kernel configuration,
+        // and we have verified that `usable_size` can accommodate a `FreeBlock`.
         unsafe {
             (*block).size = usable_size;
             (*block).next = null_mut();
@@ -81,12 +87,18 @@ impl FreeListAllocator {
     }
 }
 
+// SAFETY: The allocator manages its own internal pointer state and does not utilize
+// thread-local storage, allowing it to be transferred safely between execution contexts.
 unsafe impl Send for FreeListAllocator {}
 
+// SAFETY: `FreeListAllocator` complies with the `KernelAllocator` contract by correctly
+// respecting requested alignments and tracking block boundaries precisely.
 unsafe impl KernelAllocator for FreeListAllocator {
     unsafe fn alloc(&mut self, layout: Layout) -> *mut u8 {
         log::debug!("New allocation: {:?}", layout);
 
+        // SAFETY: `init` handles its own internal safety verification using confirmed
+        // heap boundaries before initializing the free list structure.
         unsafe {
             self.init();
         }
@@ -96,6 +108,8 @@ unsafe impl KernelAllocator for FreeListAllocator {
         let header_size = size_of::<AllocationHeader>() as u64;
 
         while !current.is_null() {
+            // SAFETY: `current` is a non-null pointer retrieved directly from a safely
+            // linked free list sequence.
             let current_block = unsafe { *current };
             let block_start = current as u64;
             let block_size = current_block.size;
@@ -119,15 +133,18 @@ unsafe impl KernelAllocator for FreeListAllocator {
             let should_split = (split_block_start + required_split_size) <= block_end;
 
             if !should_split {
-                // Consume the ENTIRE block to avoid leaking or creating unaligned fragments
                 if previous.is_null() {
                     self.first = current_block.next;
                 } else {
+                    // SAFETY: `previous` is verified to be non-null and belongs to the
+                    // active, validly tracked free list.
                     unsafe {
                         (*previous).next = current_block.next;
                     }
                 }
 
+                // SAFETY: `current` is a valid, unallocated block address, and `aligned_start`
+                // provides adequate clearance for the header footprint.
                 unsafe {
                     AllocationHeader::write_header(aligned_start, current, block_size);
                 }
@@ -141,6 +158,8 @@ unsafe impl KernelAllocator for FreeListAllocator {
             let split_block_size = block_end - split_block_start;
             let split_block = split_block_start as *mut FreeBlock;
 
+            // SAFETY: `split_block` is inside the bounds of the original valid block,
+            // and `split_block_start` has been correctly aligned for `FreeBlock`.
             unsafe {
                 (*split_block).next = current_block.next;
                 (*split_block).size = split_block_size;
@@ -149,6 +168,8 @@ unsafe impl KernelAllocator for FreeListAllocator {
             if previous.is_null() {
                 self.first = split_block;
             } else {
+                // SAFETY: `previous` is verified to be non-null and belongs to the
+                // active, validly tracked free list.
                 unsafe {
                     (*previous).next = split_block;
                 }
@@ -156,6 +177,9 @@ unsafe impl KernelAllocator for FreeListAllocator {
 
             // The actual size consumed by this allocation block up to the split point
             let allocated_total_size = split_block_start - block_start;
+
+            // SAFETY: `current` is a valid block address, and `aligned_start` leaves
+            // sufficient headroom for the allocation tracker data.
             unsafe {
                 AllocationHeader::write_header(aligned_start, current, allocated_total_size);
             }
@@ -180,6 +204,9 @@ unsafe impl KernelAllocator for FreeListAllocator {
         }
 
         let data_start = ptr as u64;
+
+        // SAFETY: `ptr` is verified non-null and is guaranteed by the caller to have
+        // originated from a previous valid call to `alloc`.
         let header = unsafe { AllocationHeader::read_header(data_start) };
         log::debug!(
             "Deallocating {} bytes at 0x{:x}",
@@ -187,6 +214,8 @@ unsafe impl KernelAllocator for FreeListAllocator {
             header.block_start as u64,
         );
 
+        // SAFETY: `header.block_start` was written accurately during the allocation cycle
+        // and references a valid, aligned block chunk now being restored to the free chain.
         unsafe {
             (*header.block_start).next = self.first;
             (*header.block_start).size = header.block_size;
