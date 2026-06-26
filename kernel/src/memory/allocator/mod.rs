@@ -2,21 +2,21 @@ use core::alloc::GlobalAlloc;
 use spin::Mutex;
 
 use crate::memory::{
-    allocator::bump::BumpAllocator,
-    heap::{HEAP_SIZE, HEAP_START},
+    allocator::{ free_list::FreeListAllocator}, heap::{HEAP_SIZE, HEAP_START},
 };
 
 mod bump;
+mod free_list;
 
 #[derive(Debug)]
 pub struct Allocator {
-    allocator: Mutex<BumpAllocator>,
+    allocator: Mutex<FreeListAllocator>,
 }
 
 impl Allocator {
     pub const fn new() -> Self {
         Allocator {
-            allocator: Mutex::new(BumpAllocator::new(HEAP_START, HEAP_SIZE)),
+            allocator: Mutex::new(FreeListAllocator::new(HEAP_START, HEAP_SIZE)),
         }
     }
 }

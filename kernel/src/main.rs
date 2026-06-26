@@ -21,6 +21,7 @@ fn kernel_main(boot_info: &'static mut BootInfo) -> ! {
 
     let data = alloc::boxed::Box::new("Hello from the heap!");
     info!("Reading data from the heap: {}", data);
+    info!("box: {:p}", *data);
 
     exit_qemu(QemuExitCode::Success);
 }
