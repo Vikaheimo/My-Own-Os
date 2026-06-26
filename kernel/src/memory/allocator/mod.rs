@@ -1,22 +1,36 @@
 use core::alloc::GlobalAlloc;
 use spin::Mutex;
 
-use crate::memory::{
-    allocator::{ free_list::FreeListAllocator}, heap::{HEAP_SIZE, HEAP_START},
-};
+use crate::memory::heap::{HEAP_SIZE, HEAP_START};
 
+#[cfg(feature = "memory-arena-heap")]
 mod bump;
+#[cfg(not(feature = "memory-arena-heap"))]
 mod free_list;
 
+#[cfg(not(feature = "memory-arena-heap"))]
 #[derive(Debug)]
 pub struct Allocator {
-    allocator: Mutex<FreeListAllocator>,
+    allocator: Mutex<free_list::FreeListAllocator>,
+}
+
+#[cfg(feature = "memory-arena-heap")]
+pub struct Allocator {
+    allocator: Mutex<bump::BumpAllocator>,
 }
 
 impl Allocator {
+    #[cfg(not(feature = "memory-arena-heap"))]
     pub const fn new() -> Self {
         Allocator {
-            allocator: Mutex::new(FreeListAllocator::new(HEAP_START, HEAP_SIZE)),
+            allocator: Mutex::new(free_list::FreeListAllocator::new(HEAP_START, HEAP_SIZE)),
+        }
+    }
+
+    #[cfg(feature = "memory-arena-heap")]
+    pub const fn new() -> Self {
+        Allocator {
+            allocator: Mutex::new(bump::BumpAllocator::new(HEAP_START, HEAP_SIZE)),
         }
     }
 }
