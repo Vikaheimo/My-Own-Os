@@ -25,7 +25,7 @@ struct AllocationHeader {
 impl AllocationHeader {
     unsafe fn write_header(data_start: u64, block_start: *mut FreeBlock) {
         log::trace!(
-            "Writing allocation header at ox{:x}. Block starts at: 0x{:x}",
+            "Writing allocation header at 0x{:x}. Block starts at: 0x{:x}",
             data_start,
             block_start as u64
         );
@@ -103,12 +103,11 @@ unsafe impl KernelAllocator for FreeListAllocator {
             let block_end = block_start + block_size;
 
             let header_size = size_of::<AllocationHeader>() as u64;
-            let data_start = block_start + header_size;
 
-            let aligned_start = align_up(data_start, layout.align() as u64);
+            let minimum_data_start = block_start + header_size;
+            let aligned_start = align_up(minimum_data_start, layout.align() as u64);
 
-            let padding = aligned_start - data_start;
-            let required = header_size + padding + layout.size() as u64;
+            let required = (aligned_start - block_start) + layout.size() as u64;
 
             let block_is_too_small = required > block_size;
             if block_is_too_small {
@@ -118,7 +117,7 @@ unsafe impl KernelAllocator for FreeListAllocator {
             }
 
             unsafe {
-                AllocationHeader::write_header(data_start, current);
+                AllocationHeader::write_header(aligned_start, current);
             }
 
             let data_end = block_start + required;
