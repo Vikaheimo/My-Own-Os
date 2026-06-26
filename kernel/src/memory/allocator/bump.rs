@@ -35,8 +35,11 @@ unsafe impl KernelAllocator for BumpAllocator {
         }
 
         self.next = alloc_end;
+        log::debug!("Allocated {} bytes at 0x{:?}", layout.size(), alloc_start);
         alloc_start as *mut u8
     }
 
-    unsafe fn dealloc(&mut self, _ptr: *mut u8, _layout: core::alloc::Layout) {}
+    unsafe fn dealloc(&mut self, _ptr: *mut u8, _layout: core::alloc::Layout) {
+        // Skipping, as dealloc is a no-op in bump allocator
+    }
 }
