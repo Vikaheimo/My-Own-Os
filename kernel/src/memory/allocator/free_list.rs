@@ -222,5 +222,7 @@ unsafe impl KernelAllocator for FreeListAllocator {
         }
 
         self.first = header.block_start;
+
+        // TODO: Possibly Implement coalescing blocks to avoid fragmenting memory
     }
 }
