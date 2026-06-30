@@ -1,4 +1,4 @@
-const TSC_FREQUENCY: u64 = 3_000_000_000;
+const TSC_FREQUENCY: u64 = 1_000_000_000;
 const NS_PER_SEC: u128 = 1_000_000_000;
 
 pub fn uptime_ns() -> u64 {

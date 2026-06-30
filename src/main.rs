@@ -2,6 +2,8 @@ use ovmf_prebuilt::{Arch, FileType, Prebuilt, Source};
 use std::env;
 use std::process::{Command, exit};
 
+const CPU_FREQUENCY: u32 = 1_000_000_000;
+
 fn main() {
     let args: Vec<String> = env::args().collect();
     let prog = &args[0];
@@ -37,7 +39,12 @@ fn run_single(test_mode: bool, firmware: &str, prog: &str) {
 fn run_all(firmware: &str, prog: &str) {
     let uefi = parse_firmware(firmware, prog);
 
-    let tests = ["TEST_KERNEL", "TEST_PANIC", "TEST_STACK_OVERFLOW", "TEST_MEMORY"];
+    let tests = [
+        "TEST_KERNEL",
+        "TEST_PANIC",
+        "TEST_STACK_OVERFLOW",
+        "TEST_MEMORY",
+    ];
 
     for test in tests {
         if let Some(image) = get_image(test, uefi) {
@@ -74,6 +81,8 @@ fn run_qemu(image: &str, uefi: bool) -> i32 {
     cmd.arg("-display").arg("none");
     cmd.arg("-device")
         .arg("isa-debug-exit,iobase=0xf4,iosize=0x04");
+    cmd.arg("-cpu")
+        .arg(format!("max,tsc-frequency={}", CPU_FREQUENCY));
     cmd.arg("-no-reboot");
 
     if uefi {
