@@ -14,6 +14,7 @@ pub mod qemu;
 pub mod serial;
 pub mod time;
 pub mod graphics;
+pub mod r#async;
 
 pub fn init() {
     serial::init();
