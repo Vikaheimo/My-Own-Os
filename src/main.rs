@@ -11,6 +11,9 @@ const TEST_NAMES: &[&str] = &[
     "TEST_MEMORY",
 ];
 
+const OPEN_DISPLAY_IN_TESTS: bool = false;
+const OPEN_DISPLAY_IN_NORMAL: bool = true;
+
 fn main() {
     let args: Vec<String> = env::args().collect();
     let prog = &args[0];
@@ -40,7 +43,13 @@ fn run_single(test_mode: bool, firmware: &str, prog: &str) {
         exit(1);
     });
 
-    exit(run_qemu(&image, uefi));
+    let open_display = if test_mode {
+        OPEN_DISPLAY_IN_TESTS
+    } else {
+        OPEN_DISPLAY_IN_NORMAL
+    };
+
+    exit(run_qemu(&image, uefi, open_display));
 }
 
 fn run_all(firmware: &str, prog: &str) {
@@ -49,7 +58,7 @@ fn run_all(firmware: &str, prog: &str) {
     for test in TEST_NAMES {
         if let Some(image) = get_image(test, uefi) {
             println!("Running {test}...");
-            let result = run_qemu(&image, uefi);
+            let result = run_qemu(&image, uefi, OPEN_DISPLAY_IN_TESTS);
 
             if result != 0 {
                 eprintln!("❌ {test} failed");
@@ -74,11 +83,16 @@ fn get_image(prefix: &str, uefi: bool) -> Option<String> {
     env::var(&key).ok()
 }
 
-fn run_qemu(image: &str, uefi: bool) -> i32 {
+fn run_qemu(image: &str, uefi: bool, display: bool) -> i32 {
     let mut cmd = Command::new("qemu-system-x86_64");
 
+    if display {
+        cmd.arg("-vga").arg("std");
+    } else {
+        cmd.arg("-display").arg("none");
+    }
+
     cmd.arg("-serial").arg("mon:stdio");
-    cmd.arg("-display").arg("none");
     cmd.arg("-device")
         .arg("isa-debug-exit,iobase=0xf4,iosize=0x04");
     cmd.arg("-cpu")
