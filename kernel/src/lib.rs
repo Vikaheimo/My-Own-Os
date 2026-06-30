@@ -12,6 +12,7 @@ pub mod logger;
 pub mod memory;
 pub mod qemu;
 pub mod serial;
+pub mod time;
 
 pub fn init() {
     serial::init();
