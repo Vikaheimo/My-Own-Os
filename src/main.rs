@@ -4,6 +4,13 @@ use std::process::{Command, exit};
 
 const CPU_FREQUENCY: u32 = 1_000_000_000;
 
+const TEST_NAMES: &[&str] = &[
+    "TEST_KERNEL",
+    "TEST_PANIC",
+    "TEST_STACK_OVERFLOW",
+    "TEST_MEMORY",
+];
+
 fn main() {
     let args: Vec<String> = env::args().collect();
     let prog = &args[0];
@@ -39,14 +46,7 @@ fn run_single(test_mode: bool, firmware: &str, prog: &str) {
 fn run_all(firmware: &str, prog: &str) {
     let uefi = parse_firmware(firmware, prog);
 
-    let tests = [
-        "TEST_KERNEL",
-        "TEST_PANIC",
-        "TEST_STACK_OVERFLOW",
-        "TEST_MEMORY",
-    ];
-
-    for test in tests {
+    for test in TEST_NAMES {
         if let Some(image) = get_image(test, uefi) {
             println!("Running {test}...");
             let result = run_qemu(&image, uefi);
