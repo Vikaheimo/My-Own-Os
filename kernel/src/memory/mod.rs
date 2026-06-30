@@ -1,3 +1,5 @@
+use bootloader_api::info::MemoryRegions;
+
 mod allocator;
 mod frame_allocator;
 pub mod heap;
@@ -33,18 +35,13 @@ pub struct MemoryContext {
 ///
 /// If these guarantees are violated, undefined behavior may occur in the
 /// paging or frame allocation code.
-pub fn init(boot_info: &'static bootloader_api::BootInfo) -> MemoryContext {
-    let phys_offset = boot_info
-        .physical_memory_offset
-        .into_option()
-        .expect("physical memory not mapped");
-
+pub fn init(physical_offset: u64, memory_regions: &'static MemoryRegions) -> MemoryContext {
     let mut frame_allocator =
-        frame_allocator::BootInfoFrameAllocator::init(&boot_info.memory_regions, phys_offset);
+        frame_allocator::BootInfoFrameAllocator::init(memory_regions, physical_offset);
 
     // SAFETY: The bootloader provides a valid physical memory offset mapping,
     // and memory initialization runs once during early kernel boot.
-    let mut mapper = unsafe { paging::init_offset_page_table(phys_offset) };
+    let mut mapper = unsafe { paging::init_offset_page_table(physical_offset) };
 
     heap::init_heap(&mut mapper, &mut frame_allocator).unwrap();
 

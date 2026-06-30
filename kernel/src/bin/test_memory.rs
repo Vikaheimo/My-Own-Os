@@ -24,7 +24,17 @@ fn main(boot_info: &'static mut BootInfo) -> ! {
 
     info!("Running kernel memory mapping test!");
 
-    let mut memory = kernel::memory::init(boot_info);
+    let BootInfo {
+        physical_memory_offset,
+        memory_regions,
+        ..
+    } = boot_info;
+
+    let physical_offset = physical_memory_offset
+        .into_option()
+        .expect("physical memory not mapped");
+
+    let mut memory = kernel::memory::init(physical_offset, memory_regions);
     test_mapping(&mut memory);
     test_simple_allocation();
     test_unaligned_split_corruption();

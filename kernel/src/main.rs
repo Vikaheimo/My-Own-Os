@@ -16,15 +16,21 @@ fn kernel_main(boot_info: &'static mut BootInfo) -> ! {
     kernel::init();
     info!("Entered kernel with boot info: {boot_info:?}");
 
-    let _memory = kernel::memory::init(boot_info);
+    let BootInfo {
+        physical_memory_offset,
+        memory_regions,
+        ..
+    } = boot_info;
+    let physical_offset = physical_memory_offset
+        .into_option()
+        .expect("physical memory not mapped");
+
+    let _memory = kernel::memory::init(physical_offset, memory_regions);
     info!("Memory initialized.");
 
-    let data = alloc::boxed::Box::new("Hello from the heap!");
-    info!("Reading data from the heap: {}", data);
-    info!("box: {:p}", *data);
-    drop(data);
-
-    exit_qemu(QemuExitCode::Success);
+    loop {
+        x86_64::instructions::hlt();
+    }
 }
 
 #[panic_handler]
