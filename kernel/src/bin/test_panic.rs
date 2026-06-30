@@ -4,7 +4,7 @@
 use bootloader_api::{BootInfo, entry_point};
 use kernel::{
     init,
-    qemu::{QemuExitCode, exit_qemu}
+    qemu::{QemuExitCode, exit_qemu},
 };
 use log::{error, info};
 
