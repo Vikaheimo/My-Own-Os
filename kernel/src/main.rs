@@ -29,8 +29,7 @@ fn kernel_main(boot_info: &'static mut BootInfo) -> ! {
     let _memory = kernel::memory::init(physical_offset, memory_regions);
     info!("Memory initialized.");
 
-    let mut framebuffer =
-        kernel::graphics::FramebufferWriter::new(framebuffer.take().unwrap());
+    let mut framebuffer = kernel::graphics::FramebufferWriter::new(framebuffer.take().unwrap());
 
     framebuffer.clear_screen(kernel::graphics::Color {
         red: 0,
@@ -48,6 +47,16 @@ fn kernel_main(boot_info: &'static mut BootInfo) -> ! {
             blue: 0,
         },
     );
+
+    let white = kernel::graphics::Color {
+        red: 255,
+        green: 255,
+        blue: 255,
+    };
+
+    framebuffer.draw_char('H', kernel::graphics::Point { x: 0, y: 0 }, white);
+    framebuffer.draw_char('i', kernel::graphics::Point { x: 8, y: 0 }, white);
+    framebuffer.draw_char('!', kernel::graphics::Point { x: 16, y: 0 }, white);
 
     loop {
         x86_64::instructions::hlt();

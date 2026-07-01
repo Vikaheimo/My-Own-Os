@@ -1,4 +1,5 @@
 use bootloader_api::info::{FrameBuffer, FrameBufferInfo, PixelFormat};
+use font8x8::UnicodeFonts;
 
 pub struct FramebufferWriter {
     framebuffer: FrameBuffer,
@@ -18,6 +19,25 @@ impl FramebufferWriter {
         Self {
             framebuffer: value,
             info,
+        }
+    }
+
+    pub fn draw_char(&mut self, char: char, position: Point, color: Color) {
+        if let Some(glyph) = font8x8::BASIC_FONTS.get(char) {
+            for (y, row) in glyph.into_iter().enumerate() {
+                for x in 0..8 {
+                    if !n_th_bit_is_set(row, x) {
+                        continue;
+                    }
+
+                    let point = Point {
+                        x: position.x + x as usize,
+                        y: position.y + y,
+                    };
+
+                    self.set_pixel(point, color);
+                }
+            }
         }
     }
 
@@ -79,4 +99,9 @@ pub struct Color {
     pub red: u8,
     pub green: u8,
     pub blue: u8,
+}
+
+#[inline]
+fn n_th_bit_is_set(num: u8, n: u8) -> bool {
+    (num >> n) & 1 == 1
 }
