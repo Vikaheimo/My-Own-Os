@@ -54,9 +54,11 @@ fn kernel_main(boot_info: &'static mut BootInfo) -> ! {
         blue: 255,
     };
 
-    framebuffer.draw_char('H', kernel::graphics::Point { x: 0, y: 0 }, white);
-    framebuffer.draw_char('i', kernel::graphics::Point { x: 8, y: 0 }, white);
-    framebuffer.draw_char('!', kernel::graphics::Point { x: 16, y: 0 }, white);
+    framebuffer.draw_string(
+        "Hello world!",
+        kernel::graphics::Point { x: 0, y: 2 },
+        white,
+    );
 
     loop {
         x86_64::instructions::hlt();

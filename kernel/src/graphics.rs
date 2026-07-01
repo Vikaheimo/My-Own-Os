@@ -1,6 +1,8 @@
 use bootloader_api::info::{FrameBuffer, FrameBufferInfo, PixelFormat};
 use font8x8::UnicodeFonts;
 
+const SCREEN_CHARACTER_WIDTH: usize = 8;
+
 pub struct FramebufferWriter {
     framebuffer: FrameBuffer,
     info: FrameBufferInfo,
@@ -19,6 +21,19 @@ impl FramebufferWriter {
         Self {
             framebuffer: value,
             info,
+        }
+    }
+
+    pub fn draw_string(&mut self, string: &str, position: Point, color: Color) {
+        for (count, c) in string.char_indices() {
+            self.draw_char(
+                c,
+                Point {
+                    x: position.x + count * SCREEN_CHARACTER_WIDTH,
+                    y: position.y,
+                },
+                color,
+            );
         }
     }
 
