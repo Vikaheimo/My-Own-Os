@@ -19,6 +19,7 @@ fn kernel_main(boot_info: &'static mut BootInfo) -> ! {
     let BootInfo {
         physical_memory_offset,
         memory_regions,
+        framebuffer,
         ..
     } = boot_info;
     let physical_offset = physical_memory_offset
@@ -27,6 +28,26 @@ fn kernel_main(boot_info: &'static mut BootInfo) -> ! {
 
     let _memory = kernel::memory::init(physical_offset, memory_regions);
     info!("Memory initialized.");
+
+    let mut framebuffer =
+        kernel::graphics::FramebufferWriter::new(framebuffer.take().unwrap());
+
+    framebuffer.clear_screen(kernel::graphics::Color {
+        red: 0,
+        green: 0,
+        blue: 0,
+    });
+
+    info!("Screen cleared");
+
+    framebuffer.set_pixel(
+        kernel::graphics::Point { x: 500, y: 500 },
+        kernel::graphics::Color {
+            red: 255,
+            green: 0,
+            blue: 0,
+        },
+    );
 
     loop {
         x86_64::instructions::hlt();
