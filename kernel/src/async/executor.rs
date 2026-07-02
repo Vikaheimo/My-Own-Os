@@ -3,6 +3,8 @@ use crossbeam_queue::ArrayQueue;
 
 use crate::r#async::task::{Task, TaskId};
 
+const MAX_CONCURRENT_TASK_COUNT: usize = 100;
+
 pub struct AsyncExecutor {
     tasks: BTreeMap<TaskId, Task>,
     task_queue: ArrayQueue<TaskId>,
@@ -22,5 +24,12 @@ impl AsyncExecutor {
         }
 
         self.task_queue.push(task_id).expect("Task queue full!");
+    }
+
+    pub fn new() -> Self {
+        Self {
+            tasks: BTreeMap::new(),
+            task_queue: ArrayQueue::new(MAX_CONCURRENT_TASK_COUNT),
+        }
     }
 }
