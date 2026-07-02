@@ -29,6 +29,7 @@ pub fn init() {
         }
         idt.general_protection_fault
             .set_handler_fn(general_protection_fault);
+        idt.divide_error.set_handler_fn(divide_by_zero_handler);
 
         idt[pic::InterruptIndex::Timer.as_u8()].set_handler_fn(timer_interrupt_handler);
 
@@ -53,6 +54,10 @@ pub fn init() {
 extern "x86-interrupt" fn breakpoint_handler(stack_frame: InterruptStackFrame) {
     serial_println!("EXCEPTION: Breakpoint");
     serial_println!("{:#?}", stack_frame)
+}
+
+extern "x86-interrupt" fn divide_by_zero_handler(stack_frame: InterruptStackFrame) {
+    panic!("EXCEPTION: DIVIDE BY ZERO\n{:#?}", stack_frame);
 }
 
 extern "x86-interrupt" fn double_fault_handler(
