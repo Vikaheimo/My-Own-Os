@@ -10,7 +10,9 @@ use x86_64::{
 
 mod pic;
 
-static TIMER_INTERRUPT_TICS: AtomicU64 = AtomicU64::new(0);
+pub const PIC_FREQUENCY_HZ: u32 = 100;
+
+pub static TIMER_INTERRUPT_TICS: AtomicU64 = AtomicU64::new(0);
 
 static IDT: Once<InterruptDescriptorTable> = Once::new();
 
@@ -45,7 +47,7 @@ pub fn init() {
         pic::init_pics();
     }
 
-    init_pit(100);
+    init_pit(PIC_FREQUENCY_HZ);
     x86_64::instructions::interrupts::enable();
 
     info!("PIC enabled")
@@ -102,6 +104,37 @@ extern "x86-interrupt" fn timer_interrupt_handler(_stack_frame: InterruptStackFr
     }
 }
 
+/// Initializes the Programmable Interval Timer (PIT) to generate
+/// periodic interrupts at the given frequency (in Hz).
+///
+/// This programs PIT channel 0 in mode 3 (square wave generator)
+/// and configures it to trigger IRQ0 at `frequency` times per second.
+///
+/// # Arguments
+///
+/// * `frequency` - The desired interrupt frequency in Hertz (Hz).
+///
+/// For example:
+/// * `100`  → 100 interrupts per second (10 ms per tick)
+/// * `1000` → 1000 interrupts per second (1 ms per tick)
+///
+/// # Details
+///
+/// The PIT runs at a base frequency of 1,193,182 Hz. The divisor
+/// is computed as:
+///
+/// ```text
+/// divisor = 1_193_182 / frequency
+/// ```
+///
+/// The divisor must fit in 16 bits (≤ 65535), which limits the
+/// minimum achievable frequency to approximately 18.2 Hz.
+///
+/// # Safety
+///
+/// This function performs raw I/O port writes to hardware ports
+/// `0x43` (command) and `0x40` (channel 0 data), which is required
+/// to configure the PIT.
 pub fn init_pit(frequency: u32) {
     let divisor: u16 = (1_193_182 / frequency) as u16;
 
