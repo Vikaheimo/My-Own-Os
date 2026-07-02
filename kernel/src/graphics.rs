@@ -25,7 +25,7 @@ impl FramebufferWriter {
     }
 
     pub fn draw_string(&mut self, string: &str, position: Point, color: Color) {
-        for (count, c) in string.char_indices() {
+        for (count, c) in string.chars().enumerate() {
             self.draw_char(
                 c,
                 Point {
