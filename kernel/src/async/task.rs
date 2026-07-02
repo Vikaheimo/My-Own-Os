@@ -15,15 +15,13 @@ impl TaskId {
     }
 }
 
-pub type TaskFuture = Pin<Box<dyn Future<Output = ()>>>;
-
 pub struct Task {
     pub id: TaskId,
-    pub future: Pin<Box<TaskFuture>>,
+    pub future: Pin<Box<dyn Future<Output = ()>>>,
 }
 
 impl Task {
-    pub fn new(future: TaskFuture) -> Self {
+    pub fn new(future: impl Future<Output = ()> + 'static) -> Self {
         Task {
             id: TaskId::new(),
             future: Box::pin(future),
