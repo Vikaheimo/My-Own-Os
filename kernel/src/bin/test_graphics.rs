@@ -3,7 +3,7 @@
 
 use bootloader_api::{BootInfo, entry_point};
 use kernel::{
-    graphics::{Color, FramebufferWriter},
+    graphics::{Color, FramebufferWriter, Point},
     init,
     qemu::{QemuExitCode, exit_qemu},
 };
@@ -36,6 +36,16 @@ fn main(boot_info: &'static mut BootInfo) -> ! {
         green: 52,
         blue: 119,
     });
+
+    framebuffer.draw_string(
+        "Some really important string!",
+        Point { x: 10, y: 10 },
+        Color {
+            red: 123,
+            green: 123,
+            blue: 123,
+        },
+    );
 
     exit_qemu(QemuExitCode::Success);
 }
