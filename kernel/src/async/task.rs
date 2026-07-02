@@ -2,6 +2,7 @@ use alloc::boxed::Box;
 use core::{
     pin::Pin,
     sync::atomic::{AtomicU64, Ordering},
+    task::{Context, Poll},
 };
 
 #[derive(Debug, Clone, Copy, PartialEq, Eq, PartialOrd, Ord)]
@@ -26,5 +27,9 @@ impl Task {
             id: TaskId::new(),
             future: Box::pin(future),
         }
+    }
+
+    pub fn poll(&mut self, context: &mut Context) -> Poll<()> {
+        self.future.as_mut().poll(context)
     }
 }
