@@ -35,7 +35,7 @@ unsafe impl KernelAllocator for BumpAllocator {
         }
 
         self.next = alloc_end;
-        log::debug!("Allocated {} bytes at 0x{:?}", layout.size(), alloc_start);
+        log::trace!("Allocated {} bytes at 0x{:?}", layout.size(), alloc_start);
         alloc_start as *mut u8
     }
 
