@@ -69,14 +69,16 @@ impl FramebufferWriter {
             return;
         }
 
-        let offset = point.y * self.info.stride + point.x;
-        let format = self.info.pixel_format;
-        let pixel = self
-            .get_pixels_mut()
-            .nth(offset)
-            .expect("Pixel should be on screen!");
+        let bytes_per_pixel = self.info.bytes_per_pixel;
+        let stride = self.info.stride;
 
-        Self::draw_pixel(pixel, format, color)
+        let pixel_index = point.y * stride + point.x;
+        let byte_offset = pixel_index * bytes_per_pixel;
+
+        let buffer = self.framebuffer.buffer_mut();
+        let pixel = &mut buffer[byte_offset..byte_offset + bytes_per_pixel];
+
+        Self::draw_pixel(pixel, self.info.pixel_format, color);
     }
 
     fn get_pixels_mut(&mut self) -> alloc::slice::ChunksExactMut<'_, u8> {
