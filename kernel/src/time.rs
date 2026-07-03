@@ -15,9 +15,6 @@ static TSC_FREQUENCY: AtomicU64 = AtomicU64::new(0);
 /// multiplication when converting TSC cycles to nanoseconds.
 const NS_PER_SEC: u128 = 1_000_000_000;
 
-/// Number of nanoseconds in one millisecond.
-const NS_PER_MS: u64 = 1_000_000;
-
 /// Initializes the global TSC frequency.
 ///
 /// This attempts to determine the TSC frequency using CPUID
@@ -122,46 +119,39 @@ pub fn tsc_frequency_from_cpuid() -> Option<u64> {
     Some(freq)
 }
 
-/// Returns system uptime in nanoseconds.
+/// Returns the elapsed time since system boot.
 ///
-/// This converts the current TSC value into nanoseconds
-/// using the calibrated TSC frequency.
+/// This function reads the TSC and converts it to a [`core::time::Duration`]
+/// using the TSC frequency that was initialized via [`init`].
 ///
 /// # Returns
 ///
-/// The number of nanoseconds since boot.
-///
-/// Returns `0` if the TSC frequency has not yet been initialized.
+/// The elapsed time as a `Duration`. If [`init`] has not been called,
+/// returns `Duration::ZERO` to avoid division by zero.
 ///
 /// # Panics
 ///
-/// Never panics.
-///
-/// # Notes
-///
-/// - Requires an invariant TSC for accurate wall-clock time.
-/// - Assumes TSC frequency does not change at runtime.
-/// - Uses 128-bit arithmetic internally to prevent overflow.
-pub fn uptime_ns() -> u64 {
+/// This function does not panic, but callers must ensure [`init`]
+/// has been called first for accurate timing measurements.
+pub fn uptime() -> core::time::Duration {
     let freq = TSC_FREQUENCY.load(Ordering::Relaxed);
 
-    // Avoid division by zero during early boot.
+    // If init() was not called, avoid division by zero.
     if freq == 0 {
-        return 0;
+        return core::time::Duration::ZERO;
     }
 
-    ((rdtsc() as u128 * NS_PER_SEC) / freq as u128) as u64
-}
+    let cycles = rdtsc() as u128;
 
-/// Returns system uptime in milliseconds.
-///
-/// This is a convenience wrapper around [`uptime_ns`].
-///
-/// # Returns
-///
-/// The number of milliseconds since boot.
-pub fn uptime_ms() -> u64 {
-    uptime_ns() / NS_PER_MS
+    // Convert cycles to nanoseconds:
+    //
+    // seconds = cycles / freq
+    // nanos   = (cycles * 1_000_000_000) / freq
+    //
+    // Use u128 to prevent overflow during multiplication.
+    let nanos = (cycles * NS_PER_SEC) / freq as u128;
+
+    core::time::Duration::from_nanos(nanos as u64)
 }
 
 /// Reads the CPU Time Stamp Counter (TSC).
