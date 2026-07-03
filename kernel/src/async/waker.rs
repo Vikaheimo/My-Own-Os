@@ -10,11 +10,15 @@ pub struct TaskWaker {
 }
 
 impl TaskWaker {
-    pub fn new(task_id: TaskId, task_queue: Arc<ArrayQueue<TaskId>>) -> Waker {
-        Waker::from(Arc::new(TaskWaker {
+    pub fn waker(task_id: TaskId, task_queue: Arc<ArrayQueue<TaskId>>) -> Waker {
+        Waker::from(Arc::new(Self::new(task_id, task_queue)))
+    }
+
+    pub fn new(task_id: TaskId, task_queue: Arc<ArrayQueue<TaskId>>) -> Self {
+        Self {
             task_id,
             task_queue,
-        }))
+        }
     }
 
     fn wake_task(&self) {

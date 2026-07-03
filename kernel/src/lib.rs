@@ -6,15 +6,15 @@
 
 extern crate alloc;
 
+pub mod r#async;
 pub mod gdt;
+pub mod graphics;
 pub mod interrupt;
 pub mod logger;
 pub mod memory;
 pub mod qemu;
 pub mod serial;
 pub mod time;
-pub mod graphics;
-pub mod r#async;
 
 pub fn init() {
     serial::init();

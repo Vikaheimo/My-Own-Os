@@ -32,6 +32,7 @@ impl AsyncExecutor {
         self.task_queue.push(task_id).expect("Task queue full!");
     }
 
+    #[allow(clippy::new_without_default)]
     pub fn new() -> Self {
         Self {
             tasks: BTreeMap::new(),
@@ -56,7 +57,7 @@ impl AsyncExecutor {
 
             let waker = waker_cache
                 .entry(task_id)
-                .or_insert(TaskWaker::new(task_id, task_queue.clone()));
+                .or_insert(TaskWaker::waker(task_id, task_queue.clone()));
             let mut context = Context::from_waker(waker);
             match task.poll(&mut context) {
                 core::task::Poll::Ready(_) => {
