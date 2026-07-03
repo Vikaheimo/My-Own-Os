@@ -1,6 +1,8 @@
 use bootloader_api::info::{FrameBuffer, FrameBufferInfo, PixelFormat};
 use font8x8::UnicodeFonts;
 
+mod cube;
+
 /// Maximum framebuffer width in pixels.
 const MAX_SCREEN_WIDTH: usize = 1920;
 /// Maximum framebuffer height in pixels.
@@ -65,6 +67,46 @@ impl FramebufferWriter {
         unsafe {
             core::ptr::copy_nonoverlapping(src, dst, len);
         }
+    }
+
+    pub fn draw_cube(&mut self, angle: f32, color: Color) {
+        let mut projected: [Option<Point>; 8] = [None; 8];
+
+        for (i, vertex) in cube::CUBE_VERTICES.iter().enumerate() {
+            let rotated = vertex.rotate(angle, angle * 0.7);
+            projected[i] = self.project(rotated);
+        }
+
+        for (a, b) in cube::EDGES {
+            if let (Some(p1), Some(p2)) = (projected[a], projected[b]) {
+                self.draw_line(p1, p2, color);
+            }
+        }
+    }
+    fn project(&self, v: cube::Vec3) -> Option<Point> {
+        let distance = 3.0;
+        let z = v.z + distance;
+
+        if z <= 0.1 {
+            return None;
+        }
+
+        let f = 200.0;
+
+        let x = (v.x * f) / z;
+        let y = (v.y * f) / z;
+
+        let screen_x = (self.info.width as f32 / 2.0 + x) as isize;
+        let screen_y = (self.info.height as f32 / 2.0 - y) as isize;
+
+        if screen_x < 0 || screen_y < 0 {
+            return None;
+        }
+
+        Some(Point {
+            x: screen_x as usize,
+            y: screen_y as usize,
+        })
     }
 
     /// Creates a new `FramebufferWriter` from a bootloader `FrameBuffer`.

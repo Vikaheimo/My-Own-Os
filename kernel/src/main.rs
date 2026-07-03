@@ -9,6 +9,7 @@ use bootloader_api::{BootInfo, entry_point};
 use kernel::{
     BOOTLOADER_CONFIG,
     asynchronous::{executor::AsyncExecutor, sleep::Sleep, task::Task},
+    graphics::{Color, FramebufferWriter},
     qemu::{QemuExitCode, exit_qemu},
 };
 use log::{error, info};
@@ -32,47 +33,37 @@ fn kernel_main(boot_info: &'static mut BootInfo) -> ! {
     let _memory = kernel::memory::init(physical_offset, memory_regions);
     info!("Memory initialized.");
 
-    let mut framebuffer = kernel::graphics::FramebufferWriter::new(framebuffer.take().unwrap());
-
-    framebuffer.clear_screen(kernel::graphics::Color {
-        red: 0,
-        green: 0,
-        blue: 0,
-    });
-
-    info!("Screen cleared");
-
-    framebuffer.set_pixel(
-        kernel::graphics::Point { x: 500, y: 500 },
-        kernel::graphics::Color {
-            red: 255,
-            green: 0,
-            blue: 0,
-        },
-    );
-
-    let white = kernel::graphics::Color {
-        red: 255,
-        green: 255,
-        blue: 255,
-    };
-
-    framebuffer.draw_string(
-        "Hello world!",
-        kernel::graphics::Point { x: 0, y: 2 },
-        white,
-    );
+    let framebuffer = FramebufferWriter::new(framebuffer.take().unwrap());
 
     let mut executor = AsyncExecutor::new();
-    executor.spawn(Task::new(logging_task()));
+    executor.spawn(Task::new(spinning_cube(framebuffer)));
 
     executor.run();
 }
 
-async fn logging_task() {
+const BLACK: Color = Color {
+    red: 0,
+    green: 0,
+    blue: 0,
+};
+
+const WHITE: Color = Color {
+    red: 255,
+    green: 255,
+    blue: 255,
+};
+
+async fn spinning_cube(mut framebuffer: FramebufferWriter) {
+    let mut angle: f32 = 0.0;
+
     loop {
-        info!("Log!");
-        Sleep::new(Duration::from_secs(1)).await;
+        let sleep = Sleep::new(Duration::from_millis(0));
+        framebuffer.clear_screen(BLACK);
+        framebuffer.draw_cube(angle, WHITE);
+        framebuffer.flush();
+        angle += 0.03;
+
+        sleep.await;
     }
 }
 
