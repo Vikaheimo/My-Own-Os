@@ -21,7 +21,7 @@ pub fn init() {
     logger::init();
     gdt::init();
     interrupt::init();
-    time::calibrate_tsc();
+    time::init();
 }
 
 pub const BOOTLOADER_CONFIG: bootloader_api::BootloaderConfig = {
