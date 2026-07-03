@@ -12,7 +12,7 @@ const NANOSECONDS_IN_SECOND: u128 = 1_000_000_000;
 
 impl Sleep {
     pub fn new(duration: core::time::Duration) -> Self {
-        let freq = crate::interrupt::PIC_FREQUENCY_HZ as u128;
+        let freq = crate::interrupt::PIT_FREQUENCY_HZ as u128;
 
         let ticks = (duration.as_nanos() * freq) / NANOSECONDS_IN_SECOND;
 

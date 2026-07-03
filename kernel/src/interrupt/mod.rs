@@ -10,7 +10,7 @@ use x86_64::{
 
 mod pic;
 
-pub const PIC_FREQUENCY_HZ: u32 = 100;
+pub const PIT_FREQUENCY_HZ: u32 = 1000;
 
 pub static TIMER_INTERRUPT_TICS: AtomicU64 = AtomicU64::new(0);
 
@@ -47,7 +47,7 @@ pub fn init() {
         pic::init_pics();
     }
 
-    init_pit(PIC_FREQUENCY_HZ);
+    init_pit(PIT_FREQUENCY_HZ);
     x86_64::instructions::interrupts::enable();
 
     info!("PIC enabled")
