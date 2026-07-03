@@ -1,6 +1,7 @@
-use core::{sync::atomic::Ordering, task::Waker};
 use alloc::{collections::btree_map::BTreeMap, vec::Vec};
+use core::{sync::atomic::Ordering, task::Waker};
 use spin::Mutex;
+use x86_64::instructions::interrupts;
 
 pub static SLEEP_QUEUE: Mutex<BTreeMap<u64, Vec<Waker>>> = Mutex::new(BTreeMap::new());
 
@@ -41,12 +42,13 @@ impl Future for Sleep {
             return core::task::Poll::Ready(());
         }
 
-        let mut queue = SLEEP_QUEUE.lock();
-        queue
-            .entry(self.wake_tick)
-            .or_default()
-            .push(cx.waker().clone());
-
+        interrupts::without_interrupts(|| {
+            let mut queue = SLEEP_QUEUE.lock();
+            queue
+                .entry(self.wake_tick)
+                .or_default()
+                .push(cx.waker().clone());
+        });
         core::task::Poll::Pending
     }
 }
