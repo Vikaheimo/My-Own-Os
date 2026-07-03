@@ -3,9 +3,12 @@
 
 extern crate alloc;
 
+use core::time::Duration;
+
 use bootloader_api::{BootInfo, entry_point};
 use kernel::{
     BOOTLOADER_CONFIG,
+    r#async::{executor::AsyncExecutor, sleep::Sleep, task::Task},
     qemu::{QemuExitCode, exit_qemu},
 };
 use log::{error, info};
@@ -60,8 +63,16 @@ fn kernel_main(boot_info: &'static mut BootInfo) -> ! {
         white,
     );
 
+    let mut executor = AsyncExecutor::new();
+    executor.spawn(Task::new(logging_task()));
+
+    executor.run();
+}
+
+async fn logging_task() {
     loop {
-        x86_64::instructions::hlt();
+        info!("Log!");
+        Sleep::new(Duration::from_secs(1)).await;
     }
 }
 
