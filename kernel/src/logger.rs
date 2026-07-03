@@ -1,8 +1,52 @@
+use log::LevelFilter;
+
 use crate::serial_println;
 
 pub struct KernelLogger;
 
-static MAX_LOG_LEVEL: log::LevelFilter = log::LevelFilter::Debug;
+pub const MAX_LOG_LEVEL: LevelFilter = {
+    #[cfg(kernel_log_level = "off")]
+    {
+        LevelFilter::Off
+    }
+
+    #[cfg(kernel_log_level = "error")]
+    {
+        LevelFilter::Error
+    }
+
+    #[cfg(kernel_log_level = "warn")]
+    {
+        LevelFilter::Warn
+    }
+
+    #[cfg(kernel_log_level = "info")]
+    {
+        LevelFilter::Info
+    }
+
+    #[cfg(kernel_log_level = "debug")]
+    {
+        LevelFilter::Debug
+    }
+
+    #[cfg(kernel_log_level = "trace")]
+    {
+        LevelFilter::Trace
+    }
+
+    #[cfg(not(any(
+        kernel_log_level = "off",
+        kernel_log_level = "error",
+        kernel_log_level = "warn",
+        kernel_log_level = "info",
+        kernel_log_level = "debug",
+        kernel_log_level = "trace",
+    )))]
+    {
+        LevelFilter::Debug
+    }
+};
 
 static LOGGER: KernelLogger = KernelLogger;
 
