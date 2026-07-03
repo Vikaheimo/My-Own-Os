@@ -114,6 +114,59 @@ impl FramebufferWriter {
         }
     }
 
+    /// Draws a line between two points using Bresenham's line algorithm.
+    ///
+    /// # Parameters
+    ///
+    /// - `position1`: The starting point of the line.
+    /// - `position2`: The ending point of the line.
+    /// - `color`: The color of the line.
+    ///
+    /// # Behavior
+    ///
+    /// Uses Bresenham's algorithm to efficiently rasterize the line
+    /// by only drawing pixels within the framebuffer bounds.
+    pub fn draw_line(&mut self, position1: Point, position2: Point, color: Color) {
+        let mut x0 = position1.x as i64;
+        let mut y0 = position1.y as i64;
+        let x1 = position2.x as i64;
+        let y1 = position2.y as i64;
+
+        let dx = (x1 - x0).abs();
+        let dy = (y1 - y0).abs();
+
+        let sx = if x0 < x1 { 1 } else { -1 };
+        let sy = if y0 < y1 { 1 } else { -1 };
+
+        let mut err = dx - dy;
+
+        loop {
+            if x0 >= 0 && y0 >= 0 {
+                self.set_pixel(
+                    Point {
+                        x: x0 as usize,
+                        y: y0 as usize,
+                    },
+                    color,
+                );
+            }
+
+            if x0 == x1 && y0 == y1 {
+                break;
+            }
+
+            let e2 = 2 * err;
+            if e2 > -dy {
+                err -= dy;
+                x0 += sx;
+            }
+            if e2 < dx {
+                err += dx;
+                y0 += sy;
+            }
+        }
+    }
+
     /// Clears the entire screen to a single color.
     ///
     /// This method iterates over every pixel in the framebuffer
