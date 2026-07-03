@@ -1,11 +1,6 @@
-/// Assumed TSC frequency in Hz (ticks per second).
-///
-/// IMPORTANT:
-/// This must match your CPU's actual Time Stamp Counter frequency.
-/// On modern systems with invariant TSC, this is usually the base
-/// (non‑turbo) frequency. If this value is incorrect, all time
-/// calculations will be wrong.
-const TSC_FREQUENCY: u64 = 1_000_000_000;
+use core::sync::atomic::{AtomicU64, Ordering};
+
+static TSC_FREQUENCY: AtomicU64 = AtomicU64::new(0);
 
 /// Number of nanoseconds in one second.
 /// Stored as u128 to prevent overflow during intermediate multiplication.
@@ -13,6 +8,33 @@ const NS_PER_SEC: u128 = 1_000_000_000;
 
 /// Number of nanoseconds in one millisecond.
 const NS_PER_MS: u64 = 1_000_000;
+
+pub fn calibrate_tsc() {
+    const CALIBRATION_TICKS: u64 = 100;
+
+    // Wait for next tick edge (optional but improves precision)
+    let start_tick = crate::interrupt::TIMER_INTERRUPT_TICS.load(Ordering::Relaxed);
+
+    while crate::interrupt::TIMER_INTERRUPT_TICS.load(Ordering::Relaxed) == start_tick {}
+
+    let start_tsc = rdtsc();
+    let target_tick = start_tick + CALIBRATION_TICKS;
+
+    while crate::interrupt::TIMER_INTERRUPT_TICS.load(Ordering::Relaxed) < target_tick {}
+
+    let end_tsc = rdtsc();
+    let delta_tsc = end_tsc - start_tsc;
+
+    // Convert measured ticks into seconds using PIT_FREQUENCY_HZ
+    //
+    // elapsed_seconds = CALIBRATION_TICKS / PIT_FREQUENCY_HZ
+    //
+    // frequency = delta_tsc / elapsed_seconds
+    //           = delta_tsc * PIT_FREQUENCY_HZ / CALIBRATION_TICKS
+    let tsc_frequency = (delta_tsc * crate::interrupt::PIT_FREQUENCY_HZ as u64) / CALIBRATION_TICKS;
+    TSC_FREQUENCY.store(tsc_frequency, Ordering::Relaxed);
+    log::info!("Calibrated TSC frequency: {} Hz", tsc_frequency);
+}
 
 /// Returns system uptime in nanoseconds.
 ///
@@ -24,7 +46,14 @@ const NS_PER_MS: u64 = 1_000_000;
 /// We perform the multiplication in u128 to avoid overflow:
 ///   (ticks * 1_000_000_000) could overflow u64 otherwise.
 pub fn uptime_ns() -> u64 {
-    ((rdtsc() as u128 * NS_PER_SEC) / TSC_FREQUENCY as u128) as u64
+    let freq = TSC_FREQUENCY.load(Ordering::Relaxed);
+
+    // Safety check (avoid divide by zero during early boot)
+    if freq == 0 {
+        return 0;
+    }
+
+    ((rdtsc() as u128 * NS_PER_SEC) / freq as u128) as u64
 }
 
 /// Returns system uptime in milliseconds.
