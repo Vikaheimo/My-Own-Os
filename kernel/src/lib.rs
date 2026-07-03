@@ -6,7 +6,7 @@
 
 extern crate alloc;
 
-pub mod r#async;
+pub mod asynchronous;
 pub mod gdt;
 pub mod graphics;
 pub mod interrupt;

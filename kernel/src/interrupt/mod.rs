@@ -94,7 +94,7 @@ extern "x86-interrupt" fn general_protection_fault(
 extern "x86-interrupt" fn timer_interrupt_handler(_stack_frame: InterruptStackFrame) {
     let tick = TIMER_INTERRUPT_TICS.fetch_add(1, Ordering::Relaxed);
 
-    crate::r#async::sleep::wake_sleepers(tick);
+    crate::asynchronous::sleep::wake_sleepers(tick);
 
     // SAFETY: This is called from the timer interrupt handler.
     // The interrupt index corresponds to a valid hardware IRQ,

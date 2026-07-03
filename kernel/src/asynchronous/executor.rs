@@ -2,7 +2,7 @@ use alloc::{collections::btree_map::BTreeMap, sync::Arc};
 use core::task::{Context, Waker};
 use crossbeam_queue::ArrayQueue;
 
-use crate::r#async::{
+use super::{
     task::{Task, TaskId},
     waker::TaskWaker,
 };

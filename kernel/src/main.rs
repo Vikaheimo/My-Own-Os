@@ -8,7 +8,7 @@ use core::time::Duration;
 use bootloader_api::{BootInfo, entry_point};
 use kernel::{
     BOOTLOADER_CONFIG,
-    r#async::{executor::AsyncExecutor, sleep::Sleep, task::Task},
+    asynchronous::{executor::AsyncExecutor, sleep::Sleep, task::Task},
     qemu::{QemuExitCode, exit_qemu},
 };
 use log::{error, info};
