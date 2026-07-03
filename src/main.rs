@@ -2,14 +2,12 @@ use ovmf_prebuilt::{Arch, FileType, Prebuilt, Source};
 use std::env;
 use std::process::{Command, exit};
 
-const CPU_FREQUENCY: u32 = 1_000_000_000;
-
 const TEST_NAMES: &[&str] = &[
     "TEST_KERNEL",
     "TEST_PANIC",
     "TEST_STACK_OVERFLOW",
     "TEST_MEMORY",
-    "TEST_GRAPHICS"
+    "TEST_GRAPHICS",
 ];
 
 const OPEN_DISPLAY_IN_TESTS: bool = false;
@@ -96,8 +94,8 @@ fn run_qemu(image: &str, uefi: bool, display: bool) -> i32 {
     cmd.arg("-serial").arg("mon:stdio");
     cmd.arg("-device")
         .arg("isa-debug-exit,iobase=0xf4,iosize=0x04");
-    cmd.arg("-cpu")
-        .arg(format!("max,tsc-frequency={}", CPU_FREQUENCY));
+    cmd.arg("-enable-kvm");
+    cmd.arg("-cpu").arg("host");
     cmd.arg("-no-reboot");
 
     if uefi {
