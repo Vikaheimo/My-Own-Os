@@ -47,6 +47,8 @@ fn main(boot_info: &'static mut BootInfo) -> ! {
         },
     );
 
+    framebuffer.flush();
+
     exit_qemu(QemuExitCode::Success);
 }
 

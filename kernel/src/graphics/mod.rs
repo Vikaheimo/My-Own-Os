@@ -1,6 +1,26 @@
 use bootloader_api::info::{FrameBuffer, FrameBufferInfo, PixelFormat};
 use font8x8::UnicodeFonts;
 
+/// Maximum framebuffer width in pixels.
+const MAX_SCREEN_WIDTH: usize = 1920;
+/// Maximum framebuffer height in pixels.
+const MAX_SCREEN_HEIGHT: usize = 1080;
+/// Maximum bytes per pixel (supports up to 32-bit color formats).
+const MAX_BYTES_PER_PIXEL: usize = 4;
+
+/// Type alias for the back buffer array.
+///
+/// Stores pixel data for a framebuffer of up to [`MAX_SCREEN_WIDTH`] ×
+/// [`MAX_SCREEN_HEIGHT`] pixels with up to [`MAX_BYTES_PER_PIXEL`] bytes per pixel.
+type BackBuffer = [u8; MAX_SCREEN_WIDTH * MAX_SCREEN_HEIGHT * MAX_BYTES_PER_PIXEL];
+
+/// Global back buffer for off-screen rendering.
+///
+/// All drawing operations write to this buffer. The [`FramebufferWriter::flush`]
+/// method copies the back buffer contents to the actual framebuffer.
+static mut BACK_BUFFER: BackBuffer =
+    [0; MAX_SCREEN_WIDTH * MAX_SCREEN_HEIGHT * MAX_BYTES_PER_PIXEL];
+
 /// Width of a single rendered character in pixels.
 ///
 /// The `font8x8` crate provides 8×8 bitmap glyphs, so each character
@@ -26,6 +46,27 @@ pub struct FramebufferWriter {
 }
 
 impl FramebufferWriter {
+    /// Flushes the back buffer to the actual framebuffer.
+    ///
+    /// Copies all pixel data from the back buffer to the device framebuffer,
+    /// making any pending draw operations visible on screen.
+    pub fn flush(&mut self) {
+        let buffer = self.framebuffer.buffer_mut();
+
+        let len = buffer.len();
+
+        let dst = buffer.as_mut_ptr();
+        let src = core::ptr::addr_of!(BACK_BUFFER).cast::<u8>();
+
+        // SAFETY: Both src and dst are valid pointers:
+        // - src points to the static BACK_BUFFER which is properly initialized
+        // - dst points to the framebuffer which is valid for the entire buffer.len() bytes
+        // - Regions do not overlap as back buffer and framebuffer are separate allocations
+        unsafe {
+            core::ptr::copy_nonoverlapping(src, dst, len);
+        }
+    }
+
     /// Creates a new `FramebufferWriter` from a bootloader `FrameBuffer`.
     ///
     /// Logs the detected pixel format for debugging purposes.
@@ -46,6 +87,7 @@ impl FramebufferWriter {
             format => log::error!("Unknown pixel format: {format:?}"),
         };
         let info = value.info();
+
         Self {
             framebuffer: value,
             info,
@@ -170,15 +212,35 @@ impl FramebufferWriter {
     /// Clears the entire screen to a single color.
     ///
     /// This method iterates over every pixel in the framebuffer
-    /// and sets it to the provided color.
+    /// and sets it to the provided color, accounting for the framebuffer stride.
     ///
     /// # Parameters
     ///
     /// - `color`: The fill color.
+    ///
+    /// # Behavior
+    ///
+    /// All pixels are written to the back buffer with bounds checking via stride.
     pub fn clear_screen(&mut self, color: Color) {
+        let width = self.info.width;
+        let height = self.info.height;
+        let stride = self.info.stride;
+        let bpp = self.info.bytes_per_pixel;
         let format = self.info.pixel_format;
-        for pixel in self.get_pixels_mut() {
-            Self::draw_pixel(pixel, format, color);
+
+        let base = core::ptr::addr_of_mut!(BACK_BUFFER).cast::<u8>();
+        for y in 0..height {
+            for x in 0..width {
+                let pixel_index = y * stride + x;
+                let offset = pixel_index * bpp;
+
+                // Safety: Bounds check ensures offset is within BACK_BUFFER allocation.
+                unsafe {
+                    let pixel = base.add(offset);
+
+                    Self::draw_pixel(pixel, format, color);
+                };
+            }
         }
     }
 
@@ -194,8 +256,7 @@ impl FramebufferWriter {
     /// If the coordinates are outside the framebuffer bounds,
     /// the function returns without modifying memory.
     pub fn set_pixel(&mut self, point: Point, color: Color) {
-        let is_off_screen = point.x >= self.info.width || point.y >= self.info.height;
-        if is_off_screen {
+        if point.x >= self.info.width || point.y >= self.info.height {
             return;
         }
 
@@ -203,22 +264,16 @@ impl FramebufferWriter {
         let stride = self.info.stride;
 
         let pixel_index = point.y * stride + point.x;
-        let byte_offset = pixel_index * bytes_per_pixel;
+        let pixel_start = pixel_index * bytes_per_pixel;
 
-        let buffer = self.framebuffer.buffer_mut();
-        let pixel = &mut buffer[byte_offset..byte_offset + bytes_per_pixel];
+        let back_buffer_ptr = core::ptr::addr_of_mut!(BACK_BUFFER).cast::<u8>();
 
-        Self::draw_pixel(pixel, self.info.pixel_format, color);
-    }
+        let pixel = back_buffer_ptr.wrapping_add(pixel_start);
 
-    /// Returns a mutable iterator over all pixels in the framebuffer.
-    ///
-    /// Each item in the iterator is a mutable slice representing
-    /// one pixel (`bytes_per_pixel` bytes).
-    fn get_pixels_mut(&mut self) -> alloc::slice::ChunksExactMut<'_, u8> {
-        self.framebuffer
-            .buffer_mut()
-            .chunks_exact_mut(self.info.bytes_per_pixel)
+        // Safety: Bounds check ensures pixel_start is within BACK_BUFFER.
+        unsafe {
+            Self::draw_pixel(pixel, self.info.pixel_format, color);
+        }
     }
 
     /// Writes a color into a raw pixel slice according to pixel format.
@@ -234,19 +289,30 @@ impl FramebufferWriter {
     /// - `Rgb`: Red, Green, Blue byte order.
     /// - `Bgr`: Blue, Green, Red byte order.
     /// - `U8`: Single-byte grayscale (uses red component).
-    fn draw_pixel(pixel: &mut [u8], format: PixelFormat, color: Color) {
+    ///
+    /// # Safety
+    ///
+    /// The caller must ensure that `pixel` points to valid memory with sufficient space
+    /// for writing the appropriate number of bytes based on the pixel format.
+    unsafe fn draw_pixel(pixel: *mut u8, format: PixelFormat, color: Color) {
         match format {
-            PixelFormat::Rgb => {
-                pixel[0] = color.red;
-                pixel[1] = color.green;
-                pixel[2] = color.blue;
-            }
-            PixelFormat::Bgr => {
-                pixel[0] = color.blue;
-                pixel[1] = color.green;
-                pixel[2] = color.red;
-            }
-            PixelFormat::U8 => pixel[0] = color.red,
+            PixelFormat::Rgb => unsafe {
+                // Safety: Caller guarantees sufficient space for 3 bytes (RGB).
+                *pixel = color.red;
+                *(pixel.add(1)) = color.green;
+                *pixel.add(2) = color.blue;
+            },
+            PixelFormat::Bgr => unsafe {
+                // Safety: Caller guarantees sufficient space for 3 bytes (BGR).
+                *pixel = color.blue;
+                *(pixel.add(1)) = color.green;
+                *(pixel.add(2)) = color.red;
+            },
+
+            PixelFormat::U8 => unsafe {
+                // Safety: Caller guarantees sufficient space for 1 byte (grayscale).
+                *pixel = color.red;
+            },
             _format => {}
         }
     }
