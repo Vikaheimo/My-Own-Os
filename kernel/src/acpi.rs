@@ -3,11 +3,13 @@ use spin::{Mutex, Once};
 
 pub static HANDLER: Once<Mutex<KernelAcpiHandler>> = Once::new();
 
-pub fn init(physical_memory_offset: u64) {
+pub fn init(physical_memory_offset: u64) -> KernelAcpiHandler {
+    let handler = KernelAcpiHandler::new(physical_memory_offset);
     HANDLER.call_once(|| {
-        let handler = KernelAcpiHandler::new(physical_memory_offset);
         Mutex::new(handler)
     });
+
+    handler
 }
 
 #[derive(Debug, Clone, Copy)]

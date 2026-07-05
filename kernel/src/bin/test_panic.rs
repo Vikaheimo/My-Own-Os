@@ -11,8 +11,8 @@ use log::{error, info};
 entry_point!(main, config = &kernel::BOOTLOADER_CONFIG);
 
 #[allow(unreachable_code)]
-fn main(_boot_info: &'static mut BootInfo) -> ! {
-    init();
+fn main(boot_info: &'static mut BootInfo) -> ! {
+    init(boot_info.into());
 
     info!("Running kernel panic test...");
 

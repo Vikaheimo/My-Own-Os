@@ -1,5 +1,27 @@
 use bootloader_api::info::{FrameBuffer, FrameBufferInfo, PixelFormat};
 use font8x8::UnicodeFonts;
+use spin::{Mutex, Once};
+
+/// Global framebuffer writer instance.
+///
+/// Lazily initialized on first call to [`init`]. Synchronized with a mutex
+/// to ensure thread-safe access to the framebuffer.
+pub static WRITER: Once<Mutex<FramebufferWriter>> = Once::new();
+
+/// Initializes the graphics subsystem with the provided framebuffer.
+///
+/// This function must be called exactly once during kernel startup to set up
+/// the framebuffer writer. Subsequent calls are no-ops due to the [`Once`] wrapper.
+///
+/// # Arguments
+/// * `framebuffer` - The framebuffer information from the bootloader
+pub fn init(framebuffer: FrameBuffer) {
+    WRITER.call_once(|| {
+        let writer = FramebufferWriter::new(framebuffer);
+
+        Mutex::new(writer)
+    });
+}
 
 /// Maximum framebuffer width in pixels.
 const MAX_SCREEN_WIDTH: usize = 1920;

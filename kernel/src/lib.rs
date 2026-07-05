@@ -6,8 +6,8 @@
 
 extern crate alloc;
 
-pub mod asynchronous;
 pub mod acpi;
+pub mod asynchronous;
 pub mod gdt;
 pub mod graphics;
 pub mod interrupt;
@@ -17,12 +17,45 @@ pub mod qemu;
 pub mod serial;
 pub mod time;
 
-pub fn init() {
+#[derive(Debug)]
+pub struct BootInfo {
+    physical_offset: u64,
+    memory_regions: &'static bootloader_api::info::MemoryRegions,
+    frame_buffer: bootloader_api::info::FrameBuffer,
+}
+
+impl From<&'static mut bootloader_api::BootInfo> for BootInfo {
+    fn from(value: &'static mut bootloader_api::BootInfo) -> Self {
+        Self {
+            memory_regions: &value.memory_regions,
+            physical_offset: value
+                .physical_memory_offset
+                .take()
+                .expect("No physical memory offset found"),
+            frame_buffer: value.framebuffer.take().expect("No framebuffer found"),
+        }
+    }
+}
+
+#[derive(Debug)]
+pub struct KernelInfo {
+    pub memory: memory::MemoryContext,
+    pub acpi: acpi::KernelAcpiHandler,
+}
+
+pub fn init(boot_info: BootInfo) -> KernelInfo {
     serial::init();
     logger::init();
     gdt::init();
     interrupt::init();
+    let memory = memory::init(boot_info.physical_offset, boot_info.memory_regions);
+    graphics::init(boot_info.frame_buffer);
+    let acpi = acpi::init(boot_info.physical_offset);
     time::init();
+
+    log::info!("Kernel initialized");
+
+    KernelInfo { memory, acpi }
 }
 
 pub const BOOTLOADER_CONFIG: bootloader_api::BootloaderConfig = {

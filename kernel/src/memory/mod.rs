@@ -5,6 +5,7 @@ mod frame_allocator;
 pub mod heap;
 mod paging;
 
+#[derive(Debug)]
 pub struct MemoryContext {
     pub mapper: x86_64::structures::paging::OffsetPageTable<'static>,
     pub frame_allocator: frame_allocator::BootInfoFrameAllocator,
@@ -44,6 +45,8 @@ pub fn init(physical_offset: u64, memory_regions: &'static MemoryRegions) -> Mem
     let mut mapper = unsafe { paging::init_offset_page_table(physical_offset) };
 
     heap::init_heap(&mut mapper, &mut frame_allocator).unwrap();
+
+    log::info!("Memory initialized");
 
     MemoryContext {
         mapper,

@@ -3,7 +3,7 @@
 
 use bootloader_api::{BootInfo, entry_point};
 use kernel::{
-    graphics::{Color, FramebufferWriter, Point},
+    graphics::{Color, Point},
     init,
     qemu::{QemuExitCode, exit_qemu},
 };
@@ -13,23 +13,11 @@ entry_point!(main, config = &kernel::BOOTLOADER_CONFIG);
 
 #[allow(unreachable_code)]
 fn main(boot_info: &'static mut BootInfo) -> ! {
-    init();
-    let BootInfo {
-        physical_memory_offset,
-        memory_regions,
-        framebuffer,
-        ..
-    } = boot_info;
-
-    let physical_offset = physical_memory_offset
-        .into_option()
-        .expect("physical memory not mapped");
-
-    let mut _memory = kernel::memory::init(physical_offset, memory_regions);
+    init(boot_info.into());
 
     info!("Running graphics test!");
 
-    let mut framebuffer = FramebufferWriter::new(framebuffer.take().unwrap());
+    let mut framebuffer = kernel::graphics::WRITER.get().unwrap().lock();
 
     framebuffer.clear_screen(Color {
         red: 235,
