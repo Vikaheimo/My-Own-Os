@@ -7,6 +7,7 @@
 extern crate alloc;
 
 pub mod asynchronous;
+pub mod acpi;
 pub mod gdt;
 pub mod graphics;
 pub mod interrupt;
