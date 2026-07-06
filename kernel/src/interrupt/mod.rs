@@ -12,7 +12,7 @@ mod pic;
 
 pub const PIT_FREQUENCY_HZ: u32 = 1000;
 
-pub static TIMER_INTERRUPT_TICS: AtomicU64 = AtomicU64::new(0);
+pub static PIT_TICS: AtomicU64 = AtomicU64::new(0);
 
 static IDT: Once<InterruptDescriptorTable> = Once::new();
 
@@ -92,7 +92,7 @@ extern "x86-interrupt" fn general_protection_fault(
 }
 
 extern "x86-interrupt" fn timer_interrupt_handler(_stack_frame: InterruptStackFrame) {
-    let tick = TIMER_INTERRUPT_TICS.fetch_add(1, Ordering::Relaxed);
+    let tick = PIT_TICS.fetch_add(1, Ordering::Relaxed);
 
     crate::asynchronous::sleep::wake_sleepers(tick);
 

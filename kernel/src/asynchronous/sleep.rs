@@ -21,7 +21,7 @@ impl Sleep {
     }
 
     pub fn ticks(ticks: u64) -> Self {
-        let now = crate::interrupt::TIMER_INTERRUPT_TICS.load(Ordering::Relaxed);
+        let now = crate::interrupt::PIT_TICS.load(Ordering::Relaxed);
 
         Self {
             wake_tick: now + ticks,
@@ -36,7 +36,7 @@ impl Future for Sleep {
         self: core::pin::Pin<&mut Self>,
         cx: &mut core::task::Context<'_>,
     ) -> core::task::Poll<Self::Output> {
-        let now = crate::interrupt::TIMER_INTERRUPT_TICS.load(Ordering::Relaxed);
+        let now = crate::interrupt::PIT_TICS.load(Ordering::Relaxed);
 
         if now >= self.wake_tick {
             return core::task::Poll::Ready(());

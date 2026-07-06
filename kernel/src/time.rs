@@ -49,17 +49,17 @@ pub fn init() {
 pub fn calibrate_tsc_using_pit() -> u64 {
     const CALIBRATION_TICKS: u64 = 100;
 
-    let start_tick = crate::interrupt::TIMER_INTERRUPT_TICS.load(Ordering::Relaxed);
+    let start_tick = crate::interrupt::PIT_TICS.load(Ordering::Relaxed);
 
     // Wait for the next PIT tick so we start on a clean boundary.
-    while crate::interrupt::TIMER_INTERRUPT_TICS.load(Ordering::Relaxed) == start_tick {
+    while crate::interrupt::PIT_TICS.load(Ordering::Relaxed) == start_tick {
         core::hint::spin_loop();
     }
 
     let start_tsc = rdtsc();
     let target_tick = start_tick + CALIBRATION_TICKS;
 
-    while crate::interrupt::TIMER_INTERRUPT_TICS.load(Ordering::Relaxed) < target_tick {
+    while crate::interrupt::PIT_TICS.load(Ordering::Relaxed) < target_tick {
         core::hint::spin_loop();
     }
 
