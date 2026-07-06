@@ -1,5 +1,4 @@
 use super::prelude::*;
-use core::sync::atomic::{AtomicU64, Ordering};
 use log::info;
 use spin::Once;
 use x86_64::{
@@ -8,11 +7,14 @@ use x86_64::{
     structures::idt::{InterruptDescriptorTable, InterruptStackFrame, PageFaultErrorCode},
 };
 
+#[cfg(feature = "interrupts-pit")]
 mod pic;
 
+#[cfg(feature = "interrupts-pit")]
 pub const PIT_FREQUENCY_HZ: u32 = 1000;
 
-pub static PIT_TICS: AtomicU64 = AtomicU64::new(0);
+#[cfg(feature = "interrupts-pit")]
+pub static PIT_TICS: core::sync::atomic::AtomicU64 = core::sync::atomic::AtomicU64::new(0);
 
 static IDT: Once<InterruptDescriptorTable> = Once::new();
 
@@ -33,6 +35,7 @@ pub fn init() {
             .set_handler_fn(general_protection_fault);
         idt.divide_error.set_handler_fn(divide_by_zero_handler);
 
+        #[cfg(feature = "interrupts-pit")]
         idt[pic::InterruptIndex::Timer.as_u8()].set_handler_fn(timer_interrupt_handler);
 
         idt
@@ -43,10 +46,12 @@ pub fn init() {
 
     // SAFETY: PIC initialization performs required hardware port I/O during
     // early kernel setup, before normal interrupt handling begins.
+    #[cfg(feature = "interrupts-pit")]
     unsafe {
         pic::init_pics();
     }
 
+    #[cfg(feature = "interrupts-pit")]
     init_pit(PIT_FREQUENCY_HZ);
     x86_64::instructions::interrupts::enable();
 
@@ -91,7 +96,10 @@ extern "x86-interrupt" fn general_protection_fault(
     )
 }
 
+#[cfg(feature = "interrupts-pit")]
 extern "x86-interrupt" fn timer_interrupt_handler(_stack_frame: InterruptStackFrame) {
+    use core::sync::atomic::Ordering;
+
     let tick = PIT_TICS.fetch_add(1, Ordering::Relaxed);
 
     crate::asynchronous::sleep::wake_sleepers(tick);

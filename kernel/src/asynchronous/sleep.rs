@@ -12,6 +12,7 @@ pub struct Sleep {
 const NANOSECONDS_IN_SECOND: u128 = 1_000_000_000;
 
 impl Sleep {
+    #[cfg(feature = "interrupts-pit")]
     pub fn new(duration: core::time::Duration) -> Self {
         let freq = crate::interrupt::PIT_FREQUENCY_HZ as u128;
 
@@ -20,6 +21,7 @@ impl Sleep {
         Sleep::ticks(ticks as u64)
     }
 
+    #[cfg(feature = "interrupts-pit")]
     pub fn ticks(ticks: u64) -> Self {
         let now = crate::interrupt::PIT_TICS.load(Ordering::Relaxed);
 
@@ -32,6 +34,7 @@ impl Sleep {
 impl Future for Sleep {
     type Output = ();
 
+    #[cfg(feature = "interrupts-pit")]
     fn poll(
         self: core::pin::Pin<&mut Self>,
         cx: &mut core::task::Context<'_>,
