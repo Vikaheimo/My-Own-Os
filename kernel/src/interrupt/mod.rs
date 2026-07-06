@@ -7,8 +7,9 @@ use x86_64::{
     structures::idt::{InterruptDescriptorTable, InterruptStackFrame, PageFaultErrorCode},
 };
 
-#[cfg(feature = "interrupts-pit")]
 mod pic;
+
+pub const LAPIC_SPURIOUS_HANDLER_VECTOR: u8 = 0xFF;
 
 #[cfg(feature = "interrupts-pit")]
 pub const PIT_FREQUENCY_HZ: u32 = 1000;
@@ -34,6 +35,8 @@ pub fn init() {
         idt.general_protection_fault
             .set_handler_fn(general_protection_fault);
         idt.divide_error.set_handler_fn(divide_by_zero_handler);
+
+        idt[LAPIC_SPURIOUS_HANDLER_VECTOR].set_handler_fn(lapic_spurious_handler);
 
         #[cfg(feature = "interrupts-pit")]
         idt[pic::InterruptIndex::Timer.as_u8()].set_handler_fn(timer_interrupt_handler);
@@ -94,6 +97,15 @@ extern "x86-interrupt" fn general_protection_fault(
         "EXCEPTION: GENERAL PROTECTION FAULT\nError Code: {:#x}\n{:#?}",
         error_code, stack_frame
     )
+}
+
+extern "x86-interrupt" fn lapic_spurious_handler(stack_frame: InterruptStackFrame) {
+    log::warn!(
+        "Spurious interrupt: RIP={:#x}, CS={:#x}, RFLAGS={:#x}",
+        stack_frame.instruction_pointer.as_u64(),
+        stack_frame.code_segment.0,
+        stack_frame.cpu_flags.bits(),
+    );
 }
 
 #[cfg(feature = "interrupts-pit")]
