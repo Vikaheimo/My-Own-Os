@@ -20,7 +20,7 @@ default = []
 testing = []
 memory-arena-heap = []
 interrupts-pit = []
-interrupts-lapic = []
+interrupts-lapic = ["interrupts-pit"]
 
 [[bin]]
 name = "kernel"
