@@ -1,4 +1,7 @@
-use core::sync::atomic::{AtomicU64, Ordering};
+use core::{
+    sync::atomic::{AtomicU64, Ordering},
+    time::Duration,
+};
 
 /// Global storage for the detected TSC frequency in Hz.
 ///
@@ -34,7 +37,6 @@ pub fn init() {
 pub fn calibrate_pit() -> u64 {
     unimplemented!()
 }
-
 
 /// Calibrates the TSC frequency using the PIT (Programmable Interval Timer).
 ///
@@ -184,4 +186,31 @@ pub fn rdtsc() -> u64 {
     // `_rdtsc()` is unsafe because it directly emits a CPU instruction.
     // It is safe to call on x86_64 hardware that supports TSC.
     unsafe { core::arch::x86_64::_rdtsc() }
+}
+
+/// Converts a frequency in Hz to a corresponding period as a `Duration`.
+///
+/// This is the inverse of frequency: `period = 1 / frequency`.
+///
+/// # Arguments
+///
+/// * `frequency` - The frequency in Hertz (cycles per second).
+///
+/// # Returns
+///
+/// The corresponding period as a `Duration`. If `frequency` is 0,
+/// returns `Duration::ZERO` to avoid division by zero.
+///
+/// # Examples
+///
+/// ```ignore
+/// // A 1 kHz signal has a period of 1 millisecond
+/// let period = frequency_to_period(1_000);
+/// assert_eq!(period, Duration::from_millis(1));
+/// ```
+pub const fn frequency_to_period(frequency: u64) -> Duration {
+    if frequency == 0 {
+        return Duration::ZERO;
+    }
+    Duration::from_nanos(NS_PER_SEC as u64 / frequency)
 }

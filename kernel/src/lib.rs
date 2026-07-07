@@ -57,6 +57,11 @@ pub fn init(boot_info: BootInfo) -> KernelInfo {
 
     x86_64::instructions::interrupts::enable();
 
+    #[cfg(feature = "interrupts-lapic")]
+    {
+        apic::lapic::calibrate();
+    }
+
     time::init();
     graphics::init(boot_info.frame_buffer);
 

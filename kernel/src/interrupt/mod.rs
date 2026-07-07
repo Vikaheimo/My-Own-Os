@@ -1,3 +1,6 @@
+#[cfg(feature = "interrupts-pit")]
+use core::sync::atomic::AtomicU64;
+
 use super::prelude::*;
 use log::info;
 use spin::Once;
@@ -14,11 +17,14 @@ pub const LAPIC_SPURIOUS_HANDLER_VECTOR: u8 = 0xFF;
 #[cfg(feature = "interrupts-lapic")]
 pub const LAPIC_TIMER_VECTOR: u8 = 0x90;
 
+#[cfg(feature = "interrupts-lapic")]
+pub static LAPIC_TICS: AtomicU64 = AtomicU64::new(0);
+
 #[cfg(feature = "interrupts-pit")]
 pub const PIT_FREQUENCY_HZ: u32 = 1000;
 
 #[cfg(feature = "interrupts-pit")]
-pub static PIT_TICS: core::sync::atomic::AtomicU64 = core::sync::atomic::AtomicU64::new(0);
+pub static PIT_TICS: AtomicU64 = AtomicU64::new(0);
 
 static IDT: Once<InterruptDescriptorTable> = Once::new();
 
@@ -119,7 +125,8 @@ extern "x86-interrupt" fn lapic_spurious_handler(stack_frame: InterruptStackFram
 
 #[cfg(feature = "interrupts-lapic")]
 extern "x86-interrupt" fn lapic_timer_handler(_stack_frame: InterruptStackFrame) {
-    log::info!("Tick");
+    use core::sync::atomic::Ordering;
+    let _current_ticks = LAPIC_TICS.fetch_add(1, Ordering::Relaxed);
 
     crate::apic::lapic::LAPIC.get().unwrap().eoi();
 }
