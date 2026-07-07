@@ -7,6 +7,7 @@
 extern crate alloc;
 
 pub mod acpi;
+pub mod apic;
 pub mod asynchronous;
 pub mod gdt;
 pub mod graphics;
@@ -49,12 +50,17 @@ pub fn init(boot_info: BootInfo) -> KernelInfo {
     gdt::init();
     interrupt::init();
     let memory = memory::init(boot_info.physical_offset, boot_info.memory_regions);
-    graphics::init(boot_info.frame_buffer);
     let acpi = acpi::init(boot_info.physical_offset);
+    
+    #[cfg(feature = "interrupts-lapic")]
+    apic::lapic::init(boot_info.physical_offset);
+
+    x86_64::instructions::interrupts::enable();
+
     time::init();
+    graphics::init(boot_info.frame_buffer);
 
     log::info!("Kernel initialized");
-
     KernelInfo { memory, acpi }
 }
 

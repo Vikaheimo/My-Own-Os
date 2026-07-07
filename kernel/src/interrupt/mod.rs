@@ -9,7 +9,10 @@ use x86_64::{
 
 mod pic;
 
+#[cfg(feature = "interrupts-lapic")]
 pub const LAPIC_SPURIOUS_HANDLER_VECTOR: u8 = 0xFF;
+#[cfg(feature = "interrupts-lapic")]
+pub const LAPIC_TIMER_VECTOR: u8 = 0x90;
 
 #[cfg(feature = "interrupts-pit")]
 pub const PIT_FREQUENCY_HZ: u32 = 1000;
@@ -36,7 +39,12 @@ pub fn init() {
             .set_handler_fn(general_protection_fault);
         idt.divide_error.set_handler_fn(divide_by_zero_handler);
 
-        idt[LAPIC_SPURIOUS_HANDLER_VECTOR].set_handler_fn(lapic_spurious_handler);
+        #[cfg(feature = "interrupts-lapic")]
+        {
+            idt[LAPIC_SPURIOUS_HANDLER_VECTOR].set_handler_fn(lapic_spurious_handler);
+            idt[LAPIC_TIMER_VECTOR].set_handler_fn(lapic_timer_handler);
+            //pic::disable_pic();
+        }
 
         #[cfg(feature = "interrupts-pit")]
         idt[pic::InterruptIndex::Timer.as_u8()].set_handler_fn(timer_interrupt_handler);
@@ -47,18 +55,18 @@ pub fn init() {
     idt.load();
     info!("IDT loaded");
 
-    // SAFETY: PIC initialization performs required hardware port I/O during
-    // early kernel setup, before normal interrupt handling begins.
     #[cfg(feature = "interrupts-pit")]
-    unsafe {
-        pic::init_pics();
+    {
+        // SAFETY: PIC initialization performs required hardware port I/O during
+        // early kernel setup, before normal interrupt handling begins.
+        unsafe {
+            pic::init_pics();
+        }
+
+        init_pit(PIT_FREQUENCY_HZ);
+
+        info!("PIC enabled")
     }
-
-    #[cfg(feature = "interrupts-pit")]
-    init_pit(PIT_FREQUENCY_HZ);
-    x86_64::instructions::interrupts::enable();
-
-    info!("PIC enabled")
 }
 
 extern "x86-interrupt" fn breakpoint_handler(stack_frame: InterruptStackFrame) {
@@ -99,6 +107,7 @@ extern "x86-interrupt" fn general_protection_fault(
     )
 }
 
+#[cfg(feature = "interrupts-lapic")]
 extern "x86-interrupt" fn lapic_spurious_handler(stack_frame: InterruptStackFrame) {
     log::warn!(
         "Spurious interrupt: RIP={:#x}, CS={:#x}, RFLAGS={:#x}",
@@ -106,6 +115,13 @@ extern "x86-interrupt" fn lapic_spurious_handler(stack_frame: InterruptStackFram
         stack_frame.code_segment.0,
         stack_frame.cpu_flags.bits(),
     );
+}
+
+#[cfg(feature = "interrupts-lapic")]
+extern "x86-interrupt" fn lapic_timer_handler(_stack_frame: InterruptStackFrame) {
+    log::info!("Tick");
+
+    crate::apic::lapic::LAPIC.get().unwrap().eoi();
 }
 
 #[cfg(feature = "interrupts-pit")]

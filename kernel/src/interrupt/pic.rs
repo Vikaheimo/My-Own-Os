@@ -39,3 +39,14 @@ pub unsafe fn init_pics() {
         pics.write_masks(PIC_MASTER_MASK_TIMER_ONLY, PIC_SLAVE_MASK_ALL);
     }
 }
+
+pub unsafe fn disable_pic() {
+    use x86_64::instructions::port::Port;
+
+    let mut port1 = Port::<u8>::new(0x21);
+    let mut port2 = Port::<u8>::new(0xA1);
+    unsafe {
+        port1.write(PIC_MASTER_MASK_ALL);
+        port2.write(PIC_SLAVE_MASK_ALL);
+    }
+}
