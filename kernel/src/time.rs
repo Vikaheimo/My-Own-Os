@@ -27,16 +27,9 @@ const NS_PER_SEC: u128 = 1_000_000_000;
 /// This function must be called once during early boot
 /// before calling [`uptime_ns`] or [`uptime_ms`].
 pub fn init() {
-    let freq = tsc_frequency_from_cpuid().unwrap_or_else(calibrate_tsc);
+    let freq = tsc_frequency_from_cpuid().unwrap_or_else(calibrate_tsc_using_pit);
 
     TSC_FREQUENCY.store(freq, Ordering::Relaxed);
-}
-
-fn calibrate_tsc() -> u64 {
-    #[cfg(feature = "interrupts-pit")]
-    {
-        calibrate_tsc_using_pit()
-    }
 }
 
 /// Calibrates the TSC frequency using the PIT (Programmable Interval Timer).
@@ -56,7 +49,7 @@ fn calibrate_tsc() -> u64 {
 /// - Assumes the PIT interrupt counter is running.
 /// - Assumes interrupts are enabled.
 /// - Blocks until the calibration period completes.
-#[cfg(feature = "interrupts-pit")]
+
 fn calibrate_tsc_using_pit() -> u64 {
     const CALIBRATION_TICKS: u64 = 100;
 

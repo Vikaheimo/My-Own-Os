@@ -51,16 +51,12 @@ pub fn init(boot_info: BootInfo) -> KernelInfo {
     interrupt::init();
     let memory = memory::init(boot_info.physical_offset, boot_info.memory_regions);
     let acpi = acpi::init(boot_info.physical_offset);
-    
-    #[cfg(feature = "interrupts-lapic")]
+
     apic::lapic::init(boot_info.physical_offset);
 
     x86_64::instructions::interrupts::enable();
 
-    #[cfg(feature = "interrupts-lapic")]
-    {
-        apic::lapic::calibrate();
-    }
+    apic::lapic::calibrate();
 
     time::init();
     graphics::init(boot_info.frame_buffer);

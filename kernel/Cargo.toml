@@ -19,8 +19,6 @@ x86_64 = "0.15.2"
 default = []
 testing = []
 memory-arena-heap = []
-interrupts-pit = []
-interrupts-lapic = ["interrupts-pit"]
 
 [[bin]]
 name = "kernel"
