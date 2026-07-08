@@ -30,7 +30,7 @@ pub fn init() {
         unsafe {
             idt.double_fault
                 .set_handler_fn(double_fault_handler)
-                .set_stack_index(crate::gdt::DOUBLE_FAULT_IST_INDEX as u16);
+                .set_stack_index(crate::gdt::DOUBLE_FAULT_IST_INDEX);
         }
         idt.general_protection_fault
             .set_handler_fn(general_protection_fault);

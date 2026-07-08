@@ -10,7 +10,7 @@ use x86_64::{
     },
 };
 
-pub const DOUBLE_FAULT_IST_INDEX: usize = 0;
+pub const DOUBLE_FAULT_IST_INDEX: u16 = 0;
 
 pub const DOUBLE_FAULT_STACK_SIZE: usize = 4096 * 5;
 static mut DOUBLE_FAULT_STACK: [u8; DOUBLE_FAULT_STACK_SIZE] = [0; DOUBLE_FAULT_STACK_SIZE];
@@ -32,7 +32,7 @@ pub fn init() {
         let stack_start = VirtAddr::from_ptr(&raw const DOUBLE_FAULT_STACK);
         let stack_end = stack_start + DOUBLE_FAULT_STACK_SIZE as u64;
 
-        tss.interrupt_stack_table[DOUBLE_FAULT_IST_INDEX] = stack_end;
+        tss.interrupt_stack_table[DOUBLE_FAULT_IST_INDEX as usize] = stack_end;
         tss
     });
 
