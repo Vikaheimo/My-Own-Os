@@ -29,6 +29,7 @@ impl AsyncExecutor {
             );
         }
 
+        #[allow(clippy::expect_used)]
         self.task_queue.push(task_id).expect("Task queue full!");
     }
 

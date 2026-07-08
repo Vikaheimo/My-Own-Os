@@ -82,7 +82,8 @@ impl log::Log for KernelLogger {
 }
 
 pub fn init() {
+    #[allow(clippy::expect_used)]
     log::set_logger(&LOGGER)
         .map(|()| log::set_max_level(MAX_LOG_LEVEL))
-        .expect("Failed to initialize logger");
+        .expect("Failed to initialize logger!");
 }
