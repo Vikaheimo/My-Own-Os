@@ -58,6 +58,7 @@ impl KernelAcpiHandler {
     }
 }
 
+#[allow(clippy::expect_used)]
 impl acpi::Handler for KernelAcpiHandler {
     unsafe fn map_physical_region<T>(
         &self,
@@ -67,7 +68,7 @@ impl acpi::Handler for KernelAcpiHandler {
         acpi::PhysicalMapping {
             physical_start: physical_address,
             virtual_start: NonNull::new(self.get_virtual_address(physical_address) as *mut T)
-                .unwrap(),
+                .expect("Virtual start address cannot be zero!"),
             region_length: size,
             mapped_length: size,
             handler: *self,

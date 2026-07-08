@@ -107,11 +107,12 @@ extern "x86-interrupt" fn lapic_spurious_handler(stack_frame: InterruptStackFram
     );
 }
 
+#[allow(clippy::expect_used)]
 extern "x86-interrupt" fn lapic_timer_handler(_stack_frame: InterruptStackFrame) {
     let current_tick = crate::time::MONOTONIC_TICKS.fetch_add(1, Ordering::Relaxed);
     crate::asynchronous::sleep::wake_sleepers(current_tick);
 
-    crate::apic::lapic::LAPIC.get().unwrap().eoi();
+    crate::apic::lapic::LAPIC.get().expect("LAPIC should be initialized!").eoi();
 }
 
 extern "x86-interrupt" fn timer_interrupt_handler(_stack_frame: InterruptStackFrame) {

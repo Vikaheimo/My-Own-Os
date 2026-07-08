@@ -36,6 +36,7 @@ pub struct MemoryContext {
 ///
 /// If these guarantees are violated, undefined behavior may occur in the
 /// paging or frame allocation code.
+#[allow(clippy::expect_used)]
 pub fn init(physical_offset: u64, memory_regions: &'static MemoryRegions) -> MemoryContext {
     let mut frame_allocator =
         frame_allocator::BootInfoFrameAllocator::init(memory_regions, physical_offset);
@@ -44,7 +45,7 @@ pub fn init(physical_offset: u64, memory_regions: &'static MemoryRegions) -> Mem
     // and memory initialization runs once during early kernel boot.
     let mut mapper = unsafe { paging::init_offset_page_table(physical_offset) };
 
-    heap::init_heap(&mut mapper, &mut frame_allocator).unwrap();
+    heap::init_heap(&mut mapper, &mut frame_allocator).expect("Heap initialization to be ok!");
 
     log::info!("Memory initialized");
 

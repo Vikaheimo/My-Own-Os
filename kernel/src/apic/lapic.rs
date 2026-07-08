@@ -42,13 +42,16 @@ pub fn init(physical_offset: u64) {
     log::info!("LAPIC enabled");
 }
 
+#[allow(clippy::expect_used)]
 pub fn calibrate() {
     const CALIBRATION_DURATION_MS: u64 = 100;
     const CALIBRATION_DURATION: Duration = Duration::from_millis(CALIBRATION_DURATION_MS);
     const PIT_TICKS_WAITED: u64 =
         crate::interrupt::PIT_FREQUENCY_HZ as u64 * CALIBRATION_DURATION_MS / 1000;
 
-    let lapic = LAPIC.get().unwrap();
+    let lapic = LAPIC
+        .get()
+        .expect("Global lapic instance to be initialized!");
 
     let current_pit_tick = crate::interrupt::PIT_TICS.load(Ordering::Acquire);
     lapic.start_calibration();

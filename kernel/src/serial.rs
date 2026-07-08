@@ -12,6 +12,7 @@ pub fn init() {
     });
 }
 
+#[allow(clippy::expect_used)]
 #[doc(hidden)]
 pub fn _print(args: core::fmt::Arguments) {
     use core::fmt::Write;
@@ -20,7 +21,7 @@ pub fn _print(args: core::fmt::Arguments) {
     interrupts::without_interrupts(|| {
         SERIAL1
             .get()
-            .unwrap()
+            .expect("Serial 1 to be initialzed!")
             .lock()
             .write_fmt(args)
             .expect("Printing to serial failed");
