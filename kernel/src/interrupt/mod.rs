@@ -164,9 +164,21 @@ extern "x86-interrupt" fn timer_interrupt_handler(_stack_frame: InterruptStackFr
 /// to configure the PIT.
 pub fn init_pit(frequency: u32) {
     #[allow(clippy::expect_used)]
-    let divisor: u16 = (1_193_182 / frequency)
-        .try_into()
-        .expect("Calulated PIT frequency doesn't fit in u16::MAX");
+    let raw_divisor = 1_193_182 / frequency;
+
+    assert!(
+        (1..=65_536).contains(&raw_divisor),
+        "PIT frequency out of range"
+    );
+
+    // Hardware interprets 0 as 65536
+    #[allow(clippy::cast_possible_truncation)]
+    let divisor: u16 = if raw_divisor == 65_536 {
+        0
+    } else {
+        // Casting here is ok as we assert that PIT divisor can be on a specific range
+        raw_divisor as u16
+    };
 
     let mut command = Port::<u8>::new(0x43);
     let mut channel0 = Port::<u8>::new(0x40);
