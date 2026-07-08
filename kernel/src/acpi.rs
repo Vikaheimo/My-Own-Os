@@ -58,8 +58,8 @@ impl KernelAcpiHandler {
     }
 }
 
-#[allow(clippy::expect_used)]
 impl acpi::Handler for KernelAcpiHandler {
+    #[allow(clippy::expect_used)]
     unsafe fn map_physical_region<T>(
         &self,
         physical_address: usize,
@@ -170,15 +170,18 @@ impl acpi::Handler for KernelAcpiHandler {
 
     fn write_pci_u32(&self, _address: acpi::PciAddress, _offset: u16, _value: u32) {}
 
+    #[allow(clippy::expect_used)]
     fn nanos_since_boot(&self) -> u64 {
-        crate::time::uptime().as_nanos() as u64
+        crate::time::uptime()
+            .as_nanos()
+            .try_into()
+            .expect("Uptime as nanos to fit into u64!")
     }
 
     fn stall(&self, microseconds: u64) {
-        let start = crate::time::uptime().as_nanos() as u64;
-        let delay_nanos = microseconds * 1000;
+        let start = crate::time::uptime();
 
-        while (crate::time::uptime().as_nanos() as u64) - start < delay_nanos {
+        while crate::time::uptime() - start < core::time::Duration::from_micros(microseconds) {
             core::hint::spin_loop();
         }
     }
