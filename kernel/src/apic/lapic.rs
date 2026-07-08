@@ -27,6 +27,8 @@ pub fn init(physical_offset: u64) {
 
     flags.insert(ApicBaseFlags::LAPIC_ENABLE);
 
+    // SAFETY: We are enabling the LAPIC in IA32_APIC_BASE using values read
+    // from the same MSR, preserving the base frame while setting enable flags.
     unsafe {
         ApicBase::write(frame, flags);
     }
@@ -66,7 +68,11 @@ pub struct Lapic {
     ticks_per_ms: AtomicU32,
 }
 
+// SAFETY: `Lapic` accesses MMIO through volatile reads/writes, and all shared
+// access goes through methods that do not create aliasing references.
 unsafe impl Send for Lapic {}
+// SAFETY: Register accesses are side-effectful MMIO operations performed with
+// volatile primitives, which are safe to call from shared references.
 unsafe impl Sync for Lapic {}
 
 impl Lapic {
@@ -78,12 +84,16 @@ impl Lapic {
     }
 
     fn write(&self, offset: usize, value: u32) {
+        // SAFETY: `self.base` points to the mapped LAPIC MMIO page and offsets
+        // used by callers are LAPIC register offsets aligned to 32-bit words.
         unsafe {
             core::ptr::write_volatile(self.base.add(offset / 4), value);
         }
     }
 
     fn read(&self, offset: usize) -> u32 {
+        // SAFETY: `self.base` points to the mapped LAPIC MMIO page and offsets
+        // used by callers are LAPIC register offsets aligned to 32-bit words.
         unsafe { core::ptr::read_volatile(self.base.add(offset / 4)) }
     }
 

@@ -67,7 +67,6 @@ pub fn init() {
 /// - Assumes the PIT interrupt counter is running.
 /// - Assumes interrupts are enabled.
 /// - Blocks until the calibration period completes.
-
 fn calibrate_tsc_using_pit() -> u64 {
     const CALIBRATION_TICKS: u64 = 100;
 

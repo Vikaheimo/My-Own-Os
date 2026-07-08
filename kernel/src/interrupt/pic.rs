@@ -45,6 +45,8 @@ pub unsafe fn disable_pic() {
 
     let mut port1 = Port::<u8>::new(0x21);
     let mut port2 = Port::<u8>::new(0xA1);
+    // SAFETY: Writing masks to PIC command ports is required to disable both
+    // PICs during APIC mode operation; the ports are the canonical PIC masks.
     unsafe {
         port1.write(PIC_MASTER_MASK_ALL);
         port2.write(PIC_SLAVE_MASK_ALL);
