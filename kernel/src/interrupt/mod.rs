@@ -112,7 +112,10 @@ extern "x86-interrupt" fn lapic_timer_handler(_stack_frame: InterruptStackFrame)
     let current_tick = crate::time::MONOTONIC_TICKS.fetch_add(1, Ordering::Relaxed);
     crate::asynchronous::sleep::wake_sleepers(current_tick);
 
-    crate::apic::lapic::LAPIC.get().expect("LAPIC should be initialized!").eoi();
+    crate::apic::lapic::LAPIC
+        .get()
+        .expect("LAPIC should be initialized!")
+        .eoi();
 }
 
 extern "x86-interrupt" fn timer_interrupt_handler(_stack_frame: InterruptStackFrame) {
@@ -160,7 +163,10 @@ extern "x86-interrupt" fn timer_interrupt_handler(_stack_frame: InterruptStackFr
 /// `0x43` (command) and `0x40` (channel 0 data), which is required
 /// to configure the PIT.
 pub fn init_pit(frequency: u32) {
-    let divisor: u16 = (1_193_182 / frequency) as u16;
+    #[allow(clippy::expect_used)]
+    let divisor: u16 = (1_193_182 / frequency)
+        .try_into()
+        .expect("Calulated PIT frequency doesn't fit in u16::MAX");
 
     let mut command = Port::<u8>::new(0x43);
     let mut channel0 = Port::<u8>::new(0x40);
