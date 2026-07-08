@@ -11,7 +11,7 @@ use log::{error, info};
 entry_point!(main, config = &kernel::BOOTLOADER_CONFIG);
 
 fn main(boot_info: &'static mut BootInfo) -> ! {
-    init(boot_info.into());
+    init(boot_info.try_into().unwrap());
 
     info!("Running kernel tests...");
 

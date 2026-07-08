@@ -1,26 +1,20 @@
 #![no_std]
 #![no_main]
 #![feature(abi_x86_interrupt)]
-
 #![deny(unsafe_op_in_unsafe_fn)]
 #![deny(clippy::missing_safety_doc)]
 #![deny(clippy::undocumented_unsafe_blocks)]
-
 #![deny(arithmetic_overflow)]
 #![deny(clippy::checked_conversions)]
 #![deny(clippy::cast_possible_truncation)]
 #![deny(clippy::cast_sign_loss)]
 #![deny(clippy::cast_possible_wrap)]
-
 #![deny(clippy::transmute_ptr_to_ref)]
 #![deny(unnecessary_transmutes)]
-
 #![deny(clippy::uninit_vec)]
-
 #![deny(clippy::unwrap_used)]
 #![warn(clippy::expect_used)]
 #![deny(clippy::panicking_unwrap)]
-
 #![warn(clippy::indexing_slicing)]
 
 extern crate alloc;
@@ -44,17 +38,19 @@ pub struct BootInfo {
     frame_buffer: bootloader_api::info::FrameBuffer,
 }
 
-impl From<&'static mut bootloader_api::BootInfo> for BootInfo {
-    fn from(value: &'static mut bootloader_api::BootInfo) -> Self {
-        Self {
+impl TryFrom<&'static mut bootloader_api::BootInfo> for BootInfo {
+    fn try_from(value: &'static mut bootloader_api::BootInfo) -> Result<Self, Self::Error> {
+        Ok(Self {
             memory_regions: &value.memory_regions,
             physical_offset: value
                 .physical_memory_offset
                 .take()
-                .expect("No physical memory offset found"),
-            frame_buffer: value.framebuffer.take().expect("No framebuffer found"),
-        }
+                .ok_or("No physical memory offset found")?,
+            frame_buffer: value.framebuffer.take().ok_or("No framebuffer found")?,
+        })
     }
+
+    type Error = &'static str;
 }
 
 #[derive(Debug)]

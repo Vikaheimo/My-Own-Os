@@ -16,7 +16,7 @@ use log::{error, info};
 entry_point!(kernel_main, config = &BOOTLOADER_CONFIG);
 
 fn kernel_main(boot_info: &'static mut BootInfo) -> ! {
-    kernel::init(boot_info.into());
+    kernel::init(boot_info.try_into().unwrap());
 
     let mut executor = AsyncExecutor::new();
     executor.spawn(Task::new(logging_task()));

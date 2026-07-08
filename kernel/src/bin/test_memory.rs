@@ -20,7 +20,7 @@ use x86_64::{
 entry_point!(main, config = &kernel::BOOTLOADER_CONFIG);
 
 fn main(boot_info: &'static mut BootInfo) -> ! {
-    let mut kernel_info = init(boot_info.into());
+    let mut kernel_info = init(boot_info.try_into().unwrap());
 
     test_mapping(&mut kernel_info.memory);
     test_simple_allocation();

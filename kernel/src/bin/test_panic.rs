@@ -12,7 +12,7 @@ entry_point!(main, config = &kernel::BOOTLOADER_CONFIG);
 
 #[allow(unreachable_code)]
 fn main(boot_info: &'static mut BootInfo) -> ! {
-    init(boot_info.into());
+    init(boot_info.try_into().unwrap());
 
     info!("Running kernel panic test...");
 
