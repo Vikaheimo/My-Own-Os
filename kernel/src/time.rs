@@ -31,10 +31,7 @@ pub static MONOTONIC_TICKS: AtomicU64 = AtomicU64::new(0);
 static TSC_FREQUENCY: AtomicU64 = AtomicU64::new(0);
 
 /// Number of nanoseconds in one second.
-///
-/// Stored as `u128` to prevent overflow during intermediate
-/// multiplication when converting TSC cycles to nanoseconds.
-const NS_PER_SEC: u128 = 1_000_000_000;
+const NS_PER_SEC: u64 = 1_000_000_000;
 
 /// Initializes the global TSC frequency.
 ///
@@ -170,9 +167,12 @@ pub fn uptime() -> core::time::Duration {
     // nanos   = (cycles * 1_000_000_000) / freq
     //
     // Use u128 to prevent overflow during multiplication.
-    let nanos = (cycles * NS_PER_SEC) / freq as u128;
+    let nanos = (cycles * NS_PER_SEC as u128) / freq as u128;
 
-    core::time::Duration::from_nanos(nanos as u64)
+    #[allow(clippy::expect_used)]
+    core::time::Duration::from_nanos(
+        u64::try_from(nanos).expect("uptime exceeded u64::MAX nanoseconds"),
+    )
 }
 
 /// Reads the CPU Time Stamp Counter (TSC).
@@ -223,5 +223,5 @@ pub const fn frequency_to_period(frequency: u64) -> Duration {
     if frequency == 0 {
         return Duration::ZERO;
     }
-    Duration::from_nanos(NS_PER_SEC as u64 / frequency)
+    Duration::from_nanos(NS_PER_SEC / frequency)
 }
