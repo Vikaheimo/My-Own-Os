@@ -27,6 +27,7 @@ struct Selectors {
 static GDT: Once<(GlobalDescriptorTable, Selectors)> = Once::new();
 
 pub fn init() {
+    #[allow(clippy::indexing_slicing)]
     let tss = TSS.call_once(|| {
         let mut tss = TaskStateSegment::new();
         let stack_start = VirtAddr::from_ptr(&raw const DOUBLE_FAULT_STACK);
