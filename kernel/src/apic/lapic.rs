@@ -139,7 +139,16 @@ impl Lapic {
     }
 
     pub fn start_periodic(&self, period: Duration) {
-        let ticks = self.ticks_per_ms() * period.as_millis() as u32;
+        let ticks_per_ms = self.ticks_per_ms() as u128;
+        let period_ns = period.as_nanos();
+
+        assert!(period_ns > 0, "LAPIC period must be non-zero!");
+
+        // Convert ticks/ms → ticks/ns
+        let ticks = (ticks_per_ms * period_ns) / 1_000_000;
+
+        #[allow(clippy::expect_used)]
+        let ticks = u32::try_from(ticks).expect("LAPIC initial count overflow");
 
         self.write(REG_DIVIDE, DIVIDE_BY_1);
 
