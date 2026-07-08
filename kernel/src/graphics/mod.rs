@@ -190,11 +190,12 @@ impl FramebufferWriter {
     ///
     /// Uses Bresenham's algorithm to efficiently rasterize the line
     /// by only drawing pixels within the framebuffer bounds.
+    #[allow(clippy::expect_used)]
     pub fn draw_line(&mut self, position1: Point, position2: Point, color: Color) {
-        let mut x0 = position1.x as i64;
-        let mut y0 = position1.y as i64;
-        let x1 = position2.x as i64;
-        let y1 = position2.y as i64;
+        let mut x0 = i64::try_from(position1.x).expect("Expected x0 to fit i64::MAX!");
+        let mut y0 = i64::try_from(position1.y).expect("Expected y0 to fit i64::MAX!");
+        let x1 = i64::try_from(position2.x).expect("Expected x1 to fit i64::MAX!");
+        let y1 = i64::try_from(position2.y).expect("Expected y1 to fit i64::MAX!");
 
         let dx = (x1 - x0).abs();
         let dy = (y1 - y0).abs();
@@ -205,21 +206,15 @@ impl FramebufferWriter {
         let mut err = dx - dy;
 
         loop {
-            if x0 >= 0 && y0 >= 0 {
-                self.set_pixel(
-                    Point {
-                        x: x0 as usize,
-                        y: y0 as usize,
-                    },
-                    color,
-                );
+            if let (Ok(x), Ok(y)) = (usize::try_from(x0), usize::try_from(y0)) {
+                self.set_pixel(Point { x, y }, color);
             }
 
             if x0 == x1 && y0 == y1 {
                 break;
             }
 
-            let e2 = 2 * err;
+            let e2 = err * 2;
             if e2 > -dy {
                 err -= dy;
                 x0 += sx;
