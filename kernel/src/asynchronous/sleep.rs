@@ -12,14 +12,23 @@ pub struct Sleep {
 const NANOSECONDS_IN_SECOND: u128 = 1_000_000_000;
 
 impl Sleep {
+    #[allow(clippy::expect_used)]
     pub fn new(duration: core::time::Duration) -> Self {
         let freq = crate::time::MONOTONIC_TICK_FREQUENCY.load(Ordering::Relaxed) as u128;
-        if freq == 0 {
-            panic!("Sleep frequency is 0!")
-        }
 
-        let ticks = (duration.as_nanos() * freq) / NANOSECONDS_IN_SECOND;
-        Sleep::ticks(ticks as u64)
+        assert!(freq != 0, "Sleep frequency is 0");
+
+        let duration_ns = duration.as_nanos();
+
+        // Prevent multiplication overflow:
+        let ticks = duration_ns
+            .checked_mul(freq)
+            .expect("Sleep duration too large")
+            / NANOSECONDS_IN_SECOND;
+
+        let ticks = u64::try_from(ticks).expect("Sleep ticks exceed u64::MAX");
+
+        Sleep::ticks(ticks)
     }
 
     pub fn ticks(ticks: u64) -> Self {
