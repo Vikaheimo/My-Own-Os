@@ -4,7 +4,7 @@ use x86_64::{
     structures::paging::{FrameAllocator, PhysFrame, Size4KiB},
 };
 
-const FRAME_SIZE: u64 = 4096;
+const FRAME_SIZE: usize = 4096;
 /**
 We want to skip the first 1MiB for legacy reasons and debugging
  */
@@ -67,10 +67,10 @@ impl BootInfoFrameAllocator {
             .iter()
             .filter(|r| r.kind == MemoryRegionKind::Usable)
             .flat_map(|r| {
-                let start = align_up(r.start, FRAME_SIZE).max(MIN_USABLE_ADDR);
-                let end = align_down(r.end, FRAME_SIZE);
+                let start = align_up(r.start, FRAME_SIZE as u64).max(MIN_USABLE_ADDR);
+                let end = align_down(r.end, FRAME_SIZE as u64);
 
-                (start..end).step_by(FRAME_SIZE as usize)
+                (start..end).step_by(FRAME_SIZE)
             })
     }
 
@@ -102,7 +102,7 @@ impl BootInfoFrameAllocator {
         unsafe {
             // SAFETY: The frame lies in a region marked as usable and
             // physical memory is mapped at `self.physical_offset`.
-            core::ptr::write_bytes(virtual_address as *mut u8, 0, FRAME_SIZE as usize);
+            core::ptr::write_bytes(virtual_address as *mut u8, 0, FRAME_SIZE);
         }
 
         Some(frame)
