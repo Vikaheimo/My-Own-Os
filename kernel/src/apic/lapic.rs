@@ -118,14 +118,17 @@ impl Lapic {
         self.write(REG_INITIAL_COUNT, INITIAL_COUNT);
     }
 
-    /// Finishes calibration.
-    ///
-    /// Call this after waiting with the PIT.
     pub fn finish_calibration(&self, elapsed: Duration) {
         let current = self.read(REG_CURRENT_COUNT);
-
         let elapsed_ticks = INITIAL_COUNT - current;
-        let frequency = elapsed_ticks / elapsed.as_millis() as u32;
+
+        let elapsed_ms = elapsed.as_millis();
+        assert!(elapsed_ms > 0, "Calibration period too short!");
+
+        #[allow(clippy::expect_used)]
+        let elapsed_ms = u32::try_from(elapsed_ms).expect("Calibration duration too large");
+        let frequency = elapsed_ticks / elapsed_ms;
+
         self.ticks_per_ms.store(frequency, Ordering::Release);
 
         log::info!("LAPIC calibrated: {} ticks/ms", frequency);
