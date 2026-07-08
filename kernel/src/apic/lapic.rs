@@ -57,6 +57,7 @@ pub fn calibrate() {
     }
 
     lapic.finish_calibration(CALIBRATION_DURATION);
+    crate::time::MONOTONIC_TICK_FREQUENCY.store(LAPIC_TIMER_FREQUENCY, Ordering::Relaxed);
     lapic.start_periodic(crate::time::frequency_to_period(LAPIC_TIMER_FREQUENCY));
 }
 
@@ -111,12 +112,10 @@ impl Lapic {
         let current = self.read(REG_CURRENT_COUNT);
 
         let elapsed_ticks = INITIAL_COUNT - current;
+        let frequency = elapsed_ticks / elapsed.as_millis() as u32;
+        self.ticks_per_ms.store(frequency, Ordering::Release);
 
-        let ticks_per_ms = elapsed_ticks / elapsed.as_millis() as u32;
-
-        self.ticks_per_ms.store(ticks_per_ms, Ordering::Release);
-
-        log::info!("LAPIC calibrated: {} ticks/ms", ticks_per_ms);
+        log::info!("LAPIC calibrated: {} ticks/ms", frequency);
     }
 
     pub fn ticks_per_ms(&self) -> u32 {

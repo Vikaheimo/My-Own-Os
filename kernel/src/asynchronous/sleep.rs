@@ -13,15 +13,17 @@ const NANOSECONDS_IN_SECOND: u128 = 1_000_000_000;
 
 impl Sleep {
     pub fn new(duration: core::time::Duration) -> Self {
-        let freq = crate::interrupt::PIT_FREQUENCY_HZ as u128;
+        let freq = crate::time::MONOTONIC_TICK_FREQUENCY.load(Ordering::Relaxed) as u128;
+        if freq == 0 {
+            panic!("Sleep frequency is 0!")
+        }
 
         let ticks = (duration.as_nanos() * freq) / NANOSECONDS_IN_SECOND;
-
         Sleep::ticks(ticks as u64)
     }
 
     pub fn ticks(ticks: u64) -> Self {
-        let now = crate::interrupt::PIT_TICS.load(Ordering::Relaxed);
+        let now = crate::time::MONOTONIC_TICKS.load(Ordering::Acquire);
 
         Self {
             wake_tick: now + ticks,
@@ -36,7 +38,7 @@ impl Future for Sleep {
         self: core::pin::Pin<&mut Self>,
         cx: &mut core::task::Context<'_>,
     ) -> core::task::Poll<Self::Output> {
-        let now = crate::interrupt::PIT_TICS.load(Ordering::Relaxed);
+        let now = crate::time::MONOTONIC_TICKS.load(Ordering::Acquire);
 
         if now >= self.wake_tick {
             return core::task::Poll::Ready(());

@@ -1,4 +1,4 @@
-use core::sync::atomic::AtomicU64;
+use core::sync::atomic::{AtomicU64, Ordering};
 
 use super::prelude::*;
 use log::info;
@@ -13,7 +13,6 @@ mod pic;
 
 pub const LAPIC_SPURIOUS_HANDLER_VECTOR: u8 = 0xFF;
 pub const LAPIC_TIMER_VECTOR: u8 = 0x90;
-pub static LAPIC_TICS: AtomicU64 = AtomicU64::new(0);
 
 pub const PIT_FREQUENCY_HZ: u32 = 1000;
 pub static PIT_TICS: AtomicU64 = AtomicU64::new(0);
@@ -109,18 +108,14 @@ extern "x86-interrupt" fn lapic_spurious_handler(stack_frame: InterruptStackFram
 }
 
 extern "x86-interrupt" fn lapic_timer_handler(_stack_frame: InterruptStackFrame) {
-    use core::sync::atomic::Ordering;
-    let _current_ticks = LAPIC_TICS.fetch_add(1, Ordering::Relaxed);
+    let current_tick = crate::time::MONOTONIC_TICKS.fetch_add(1, Ordering::Relaxed);
+    crate::asynchronous::sleep::wake_sleepers(current_tick);
 
     crate::apic::lapic::LAPIC.get().unwrap().eoi();
 }
 
 extern "x86-interrupt" fn timer_interrupt_handler(_stack_frame: InterruptStackFrame) {
-    use core::sync::atomic::Ordering;
-
-    let tick = PIT_TICS.fetch_add(1, Ordering::Relaxed);
-
-    crate::asynchronous::sleep::wake_sleepers(tick);
+    let _current_tick = PIT_TICS.fetch_add(1, Ordering::Relaxed);
 
     // SAFETY: This is called from the timer interrupt handler.
     // The interrupt index corresponds to a valid hardware IRQ,

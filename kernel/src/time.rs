@@ -3,6 +3,24 @@ use core::{
     time::Duration,
 };
 
+/// Global storage for the monotonic tick frequency in Hz.
+///
+/// This is initialized during boot to store the frequency at which
+/// the monotonic tick counter is incremented by the timer interrupt handler.
+///
+/// Stored as `AtomicU64` to allow safe concurrent reads
+/// without locking.
+pub static MONOTONIC_TICK_FREQUENCY: AtomicU64 = AtomicU64::new(0);
+
+/// Global counter for monotonic system ticks.
+///
+/// This is incremented by the timer interrupt handler on each tick
+/// and provides a monotonically increasing value for measuring elapsed time.
+///
+/// Stored as `AtomicU64` to allow safe concurrent reads and updates
+/// without locking.
+pub static MONOTONIC_TICKS: AtomicU64 = AtomicU64::new(0);
+
 /// Global storage for the detected TSC frequency in Hz.
 ///
 /// This is initialized once during early boot via [`init`]
