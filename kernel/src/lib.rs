@@ -1,8 +1,27 @@
 #![no_std]
 #![no_main]
 #![feature(abi_x86_interrupt)]
-#![warn(clippy::missing_safety_doc)]
-#![warn(clippy::undocumented_unsafe_blocks)]
+
+#![deny(unsafe_op_in_unsafe_fn)]
+#![deny(clippy::missing_safety_doc)]
+#![deny(clippy::undocumented_unsafe_blocks)]
+
+#![deny(arithmetic_overflow)]
+#![deny(clippy::checked_conversions)]
+#![deny(clippy::cast_possible_truncation)]
+#![deny(clippy::cast_sign_loss)]
+#![deny(clippy::cast_possible_wrap)]
+
+#![deny(clippy::transmute_ptr_to_ref)]
+#![deny(unnecessary_transmutes)]
+
+#![deny(clippy::uninit_vec)]
+
+#![deny(clippy::unwrap_used)]
+#![warn(clippy::expect_used)]
+#![deny(clippy::panicking_unwrap)]
+
+#![warn(clippy::indexing_slicing)]
 
 extern crate alloc;
 
