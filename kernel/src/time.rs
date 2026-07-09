@@ -44,6 +44,8 @@ const NS_PER_SEC: u64 = 1_000_000_000;
 pub fn init() {
     let freq = tsc_frequency_from_cpuid().unwrap_or_else(calibrate_tsc_using_pit);
 
+    assert!(freq != 0, "Calculated TSC frequency cannot be zero!");
+
     TSC_FREQUENCY.store(freq, Ordering::Relaxed);
 }
 
