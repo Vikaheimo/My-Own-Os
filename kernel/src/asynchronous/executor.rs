@@ -76,8 +76,7 @@ impl AsyncExecutor {
         interrupts::disable();
 
         if self.task_queue.is_empty() {
-            interrupts::enable();
-            x86_64::instructions::hlt();
+            interrupts::enable_and_hlt();
         } else {
             interrupts::enable();
         }
