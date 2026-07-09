@@ -57,18 +57,9 @@ impl log::Log for KernelLogger {
 
     fn log(&self, record: &log::Record) {
         let uptime = crate::time::uptime();
-        let total_secs = uptime.as_secs();
-        let hours = total_secs / 3600;
-        let minutes = (total_secs % 3600) / 60;
-        let seconds = total_secs % 60;
-        let millis = uptime.subsec_millis();
-
         serial_println!(
-            "[{:02}:{:02}:{:02}.{:03}] {:<5} {}:{}  {}",
-            hours,
-            minutes,
-            seconds,
-            millis,
+            "{} {:<5} {}:{}  {}",
+            LogDurationFormat::from(uptime),
             record.level(),
             record.file().unwrap_or("<unknown>"),
             record.line().unwrap_or(0),
@@ -86,4 +77,42 @@ pub fn init() {
     log::set_logger(&LOGGER)
         .map(|()| log::set_max_level(MAX_LOG_LEVEL))
         .expect("Failed to initialize logger!");
+}
+
+#[derive(Debug)]
+struct LogDurationFormat {
+    hours: u64,
+    minutes: u64,
+    seconds: u64,
+    milliseconds: u32,
+}
+
+impl core::fmt::Display for LogDurationFormat {
+    fn fmt(&self, f: &mut core::fmt::Formatter<'_>) -> core::fmt::Result {
+        write!(
+            f,
+            "[{:02}:{:02}:{:02}.{:03}]",
+            self.hours, self.minutes, self.seconds, self.milliseconds
+        )
+    }
+}
+
+const SECONDS_IN_HOUR: u64 = 3600;
+const SECONDS_IN_MINUTE: u64 = 60;
+
+impl From<core::time::Duration> for LogDurationFormat {
+    fn from(value: core::time::Duration) -> Self {
+        let full_seconds = value.as_secs();
+        let hours = full_seconds / SECONDS_IN_HOUR;
+        let minutes = (full_seconds % SECONDS_IN_HOUR) / SECONDS_IN_MINUTE;
+        let seconds = full_seconds % SECONDS_IN_MINUTE;
+        let milliseconds = value.subsec_millis();
+
+        Self {
+            milliseconds,
+            seconds,
+            minutes,
+            hours,
+        }
+    }
 }
