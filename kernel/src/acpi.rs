@@ -1,10 +1,11 @@
 use core::ptr::NonNull;
 use spin::{Mutex, Once};
+use x86_64::{PhysAddr, VirtAddr};
 
 pub static HANDLER: Once<Mutex<KernelAcpiHandler>> = Once::new();
 
 pub fn init(physical_memory_offset: u64) -> KernelAcpiHandler {
-    let handler = KernelAcpiHandler::new(physical_memory_offset);
+    let handler = KernelAcpiHandler::new(VirtAddr::new(physical_memory_offset));
     HANDLER.call_once(|| Mutex::new(handler));
 
     handler
@@ -12,35 +13,40 @@ pub fn init(physical_memory_offset: u64) -> KernelAcpiHandler {
 
 #[derive(Debug, Clone, Copy)]
 pub struct KernelAcpiHandler {
-    physical_memory_offset: u64,
+    physical_memory_offset: VirtAddr,
 }
 
 impl KernelAcpiHandler {
-    const fn new(physical_memory_offset: u64) -> Self {
+    const fn new(physical_memory_offset: VirtAddr) -> Self {
         Self {
             physical_memory_offset,
         }
     }
 
     #[inline]
-    fn get_virtual_address(&self, address: usize) -> u64 {
-        self.physical_memory_offset + address as u64
+    fn physical(&self, address: usize) -> PhysAddr {
+        PhysAddr::new(address as u64)
     }
 
     #[inline]
-    unsafe fn read_physical<T>(&self, physical_address: usize) -> T {
-        let virt = self.get_virtual_address(physical_address);
-        // SAFETY: The caller guarantees `physical_address` points to a valid
-        // mapped physical location for `T` under the static phys->virt mapping.
-        unsafe { core::ptr::read_volatile(virt as *const T) }
+    fn get_virtual_address(&self, address: PhysAddr) -> VirtAddr {
+        self.physical_memory_offset + address.as_u64()
     }
 
     #[inline]
-    unsafe fn write_physical<T>(&self, physical_address: usize, value: T) {
+    unsafe fn read_physical<T>(&self, physical_address: PhysAddr) -> T {
         let virt = self.get_virtual_address(physical_address);
         // SAFETY: The caller guarantees `physical_address` points to a valid
         // mapped physical location for `T` under the static phys->virt mapping.
-        unsafe { core::ptr::write_volatile(virt as *mut T, value) }
+        unsafe { core::ptr::read_volatile(virt.as_ptr()) }
+    }
+
+    #[inline]
+    unsafe fn write_physical<T>(&self, physical_address: PhysAddr, value: T) {
+        let virt = self.get_virtual_address(physical_address);
+        // SAFETY: The caller guarantees `physical_address` points to a valid
+        // mapped physical location for `T` under the static phys->virt mapping.
+        unsafe { core::ptr::write_volatile(virt.as_mut_ptr(), value) }
     }
 
     #[inline]
@@ -65,10 +71,14 @@ impl acpi::Handler for KernelAcpiHandler {
         physical_address: usize,
         size: usize,
     ) -> acpi::PhysicalMapping<Self, T> {
+        let phys = PhysAddr::new(physical_address as u64);
+        let virt = self.get_virtual_address(phys);
+        let virtual_start =
+            NonNull::new(virt.as_u64() as *mut T).expect("Virtual start address cannot be zero!");
+
         acpi::PhysicalMapping {
             physical_start: physical_address,
-            virtual_start: NonNull::new(self.get_virtual_address(physical_address) as *mut T)
-                .expect("Virtual start address cannot be zero!"),
+            virtual_start,
             region_length: size,
             mapped_length: size,
             handler: *self,
@@ -84,49 +94,49 @@ impl acpi::Handler for KernelAcpiHandler {
     fn read_u8(&self, address: usize) -> u8 {
         // SAFETY: ACPI supplies valid table/region addresses and the handler
         // maps physical memory statically for the kernel lifetime.
-        unsafe { self.read_physical(address) }
+        unsafe { self.read_physical(self.physical(address)) }
     }
 
     fn read_u16(&self, address: usize) -> u16 {
         // SAFETY: ACPI supplies valid table/region addresses and the handler
         // maps physical memory statically for the kernel lifetime.
-        unsafe { self.read_physical(address) }
+        unsafe { self.read_physical(self.physical(address)) }
     }
 
     fn read_u32(&self, address: usize) -> u32 {
         // SAFETY: ACPI supplies valid table/region addresses and the handler
         // maps physical memory statically for the kernel lifetime.
-        unsafe { self.read_physical(address) }
+        unsafe { self.read_physical(self.physical(address)) }
     }
 
     fn read_u64(&self, address: usize) -> u64 {
         // SAFETY: ACPI supplies valid table/region addresses and the handler
         // maps physical memory statically for the kernel lifetime.
-        unsafe { self.read_physical(address) }
+        unsafe { self.read_physical(self.physical(address)) }
     }
 
     fn write_u8(&self, address: usize, value: u8) {
         // SAFETY: ACPI supplies valid table/region addresses and the handler
         // maps physical memory statically for the kernel lifetime.
-        unsafe { self.write_physical(address, value) }
+        unsafe { self.write_physical(self.physical(address), value) }
     }
 
     fn write_u16(&self, address: usize, value: u16) {
         // SAFETY: ACPI supplies valid table/region addresses and the handler
         // maps physical memory statically for the kernel lifetime.
-        unsafe { self.write_physical(address, value) }
+        unsafe { self.write_physical(self.physical(address), value) }
     }
 
     fn write_u32(&self, address: usize, value: u32) {
         // SAFETY: ACPI supplies valid table/region addresses and the handler
         // maps physical memory statically for the kernel lifetime.
-        unsafe { self.write_physical(address, value) }
+        unsafe { self.write_physical(self.physical(address), value) }
     }
 
     fn write_u64(&self, address: usize, value: u64) {
         // SAFETY: ACPI supplies valid table/region addresses and the handler
         // maps physical memory statically for the kernel lifetime.
-        unsafe { self.write_physical(address, value) }
+        unsafe { self.write_physical(self.physical(address), value) }
     }
 
     fn read_io_u8(&self, port: u16) -> u8 {
