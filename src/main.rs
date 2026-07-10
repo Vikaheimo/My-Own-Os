@@ -8,6 +8,7 @@ const TEST_NAMES: &[&str] = &[
     "TEST_STACK_OVERFLOW",
     "TEST_MEMORY",
     "TEST_GRAPHICS",
+    "TEST_FILESYSTEM",
 ];
 
 const OPEN_DISPLAY_IN_TESTS: bool = false;

@@ -49,4 +49,10 @@ fn main() {
         "CARGO_BIN_FILE_KERNEL_test_graphics",
         &out_dir,
     );
+
+    build_image(
+        "test_filesystem",
+        "CARGO_BIN_FILE_KERNEL_test_filesystem",
+        &out_dir,
+    );
 }
