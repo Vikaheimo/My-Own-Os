@@ -22,6 +22,7 @@ extern crate alloc;
 pub mod acpi;
 pub mod apic;
 pub mod asynchronous;
+pub mod filesystem;
 pub mod gdt;
 pub mod graphics;
 pub mod interrupt;
