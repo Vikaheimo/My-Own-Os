@@ -1,8 +1,7 @@
-use alloc::{string::String, sync::Arc, vec::Vec};
+use alloc::{boxed::Box, string::String, sync::Arc, vec::Vec};
 
 pub trait VirtualFilesystem {
-    type FilesystemError;
-    fn root(&self) -> Arc<dyn VfsNode<FilesystemError = Self::FilesystemError>>;
+    fn root(&self) -> Arc<dyn VfsDirectory>;
 }
 
 #[derive(Debug, Clone)]
@@ -11,26 +10,103 @@ pub struct VirtualFileMetadata {
     pub name: String,
 }
 
-pub type VfsPointer<E> = Arc<dyn VfsNode<FilesystemError = E>>;
+pub trait FsError: core::fmt::Debug + core::fmt::Display {}
+impl<T> FsError for T where T: core::fmt::Debug + core::fmt::Display {}
+
+#[derive(Debug)]
+pub enum VfsError {
+    NotFound,
+    NotADirectory,
+    NotAFile,
+    AlreadyExists,
+    PermissionDenied,
+    IoError,
+    OffsetOutsideData,
+    FsSpecific(Box<dyn FsError>),
+}
+
+impl core::fmt::Display for VfsError {
+    fn fmt(&self, f: &mut core::fmt::Formatter<'_>) -> core::fmt::Result {
+        let msg = match self {
+            VfsError::NotFound => "Not found",
+            VfsError::NotADirectory => "Not a directory",
+            VfsError::NotAFile => "Not a file",
+            VfsError::AlreadyExists => "Already exists",
+            VfsError::PermissionDenied => "Permission denied",
+            VfsError::IoError => "I/O error",
+            VfsError::OffsetOutsideData => "Offset outside data range",
+            VfsError::FsSpecific(inner) => {
+                return write!(f, "Filesystem-specific error: {}", inner);
+            }
+        };
+
+        write!(f, "{msg}")
+    }
+}
+
+impl core::error::Error for VfsError {}
+
+pub type VfsResult<T> = Result<T, VfsError>;
+
+#[derive(Clone)]
+pub enum VfsEntry {
+    File(Arc<dyn VfsFile>),
+    Directory(Arc<dyn VfsDirectory>),
+}
+
+impl VfsEntry {
+    pub fn metadata(&self) -> VirtualFileMetadata {
+        match self {
+            VfsEntry::File(file) => file.metadata(),
+            VfsEntry::Directory(directory) => directory.metadata(),
+        }
+    }
+
+    pub fn into_file(self) -> Result<Arc<dyn VfsFile>, VfsError> {
+        self.try_into()
+    }
+
+    pub fn into_directory(self) -> Result<Arc<dyn VfsDirectory>, VfsError> {
+        self.try_into()
+    }
+}
+
+impl TryInto<Arc<dyn VfsFile>> for VfsEntry {
+    type Error = VfsError;
+
+    fn try_into(self) -> Result<Arc<dyn VfsFile>, Self::Error> {
+        match self {
+            VfsEntry::File(file) => Ok(file),
+            VfsEntry::Directory(_) => Err(VfsError::NotAFile),
+        }
+    }
+}
+
+impl TryInto<Arc<dyn VfsDirectory>> for VfsEntry {
+    type Error = VfsError;
+
+    fn try_into(self) -> Result<Arc<dyn VfsDirectory>, Self::Error> {
+        match self {
+            VfsEntry::File(_) => Err(VfsError::NotADirectory),
+            VfsEntry::Directory(directory) => Ok(directory),
+        }
+    }
+}
 
 pub trait VfsNode {
-    type FilesystemError;
-
     fn metadata(&self) -> VirtualFileMetadata;
+}
 
-    fn read(&self, offset: usize, buffer: &mut [u8]) -> Result<usize, Self::FilesystemError>;
+pub trait VfsFile: VfsNode {
+    fn read(&self, offset: usize, buffer: &mut [u8]) -> VfsResult<usize>;
 
-    fn write(&self, offset: usize, buffer: &[u8]) -> Result<usize, Self::FilesystemError>;
+    fn write(&self, offset: usize, buffer: &[u8]) -> VfsResult<usize>;
+}
 
-    fn create(
-        &self,
-        metadata: VirtualFileMetadata,
-    ) -> Result<VfsPointer<Self::FilesystemError>, Self::FilesystemError>;
+pub trait VfsDirectory: VfsNode {
+    fn create(&self, metadata: VirtualFileMetadata) -> VfsResult<VfsEntry>;
 
-    fn find(
-        &self,
-        name: &str,
-    ) -> Result<Option<VfsPointer<Self::FilesystemError>>, Self::FilesystemError>;
+    fn find(&self, name: &str) -> VfsResult<Option<VfsEntry>>;
 
-    fn list_files(&self) -> Result<Vec<VfsPointer<Self::FilesystemError>>, Self::FilesystemError>;
+    fn list_files(&self) -> VfsResult<Vec<VfsEntry>>;
 }

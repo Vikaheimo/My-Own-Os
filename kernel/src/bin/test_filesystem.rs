@@ -26,6 +26,8 @@ fn main(boot_info: &'static mut BootInfo) -> ! {
             is_dir: false,
             name: "test.txt".into(),
         })
+        .unwrap()
+        .into_file()
         .unwrap();
 
     const TEXT: &[u8] = b"Hello kernel!";
@@ -36,18 +38,21 @@ fn main(boot_info: &'static mut BootInfo) -> ! {
     let size = file.read(0, &mut buffer).unwrap();
     assert_eq!(&buffer[..size], TEXT);
 
-    let folder = root
+    let binding = root
         .create(VirtualFileMetadata {
             is_dir: true,
             name: "test".into(),
         })
         .unwrap();
+    let folder = binding.into_directory().unwrap();
 
     let file2 = folder
         .create(VirtualFileMetadata {
             is_dir: false,
             name: "test.txt".into(),
         })
+        .unwrap()
+        .into_file()
         .unwrap();
 
     file2.write(0, TEXT).unwrap();
