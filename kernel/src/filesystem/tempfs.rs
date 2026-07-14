@@ -1,6 +1,6 @@
-use alloc::{string::String, sync::Arc, vec::Vec};
+use crate::filesystem::vfs::{self, VfsEntry, VfsError, VfsNode};
+use alloc::{collections::btree_map::BTreeMap, string::String, sync::Arc, vec::Vec};
 use spin::Mutex;
-use crate::filesystem::vfs::{self, VfsEntry, VfsNode};
 
 pub type TempFilesystemError = &'static str;
 
@@ -92,14 +92,14 @@ impl vfs::VfsFile for TempFsFile {
 
 struct TempFsDirectory {
     name: String,
-    children: Mutex<Vec<vfs::VfsEntry>>,
+    children: Mutex<BTreeMap<String, vfs::VfsEntry>>,
 }
 
 impl TempFsDirectory {
     pub fn new(name: String) -> Self {
         Self {
             name,
-            children: Mutex::new(Vec::new()),
+            children: Mutex::new(BTreeMap::new()),
         }
     }
 }
@@ -116,36 +116,34 @@ impl vfs::VfsNode for TempFsDirectory {
 impl vfs::VfsDirectory for TempFsDirectory {
     fn create(&self, metadata: vfs::VirtualFileMetadata) -> vfs::VfsResult<VfsEntry> {
         let mut children = self.children.lock();
-        let already_exists = children
-            .iter()
-            .map(|node| node.metadata().name)
-            .any(|name| name == metadata.name);
+        let already_exists = children.contains_key(&metadata.name);
         if already_exists {
             return Err(vfs::VfsError::AlreadyExists);
         }
 
+        let name = metadata.name.clone();
         let new_child = if metadata.is_dir {
             VfsEntry::Directory(Arc::new(TempFsDirectory::new(metadata.name)))
         } else {
-            VfsEntry::File(Arc::new(TempFsFile::new(metadata.name)))  
+            VfsEntry::File(Arc::new(TempFsFile::new(metadata.name)))
         };
-        children.push(new_child.clone());
+        children.insert(name, new_child.clone());
 
         Ok(new_child)
     }
 
     fn find(&self, name: &str) -> vfs::VfsResult<Option<VfsEntry>> {
-        let child = self
-            .children
-            .lock()
-            .iter()
-            .find(|child| child.metadata().name == name)
-            .cloned();
-        Ok(child)
+        Ok(self.children.lock().get(name).cloned())
     }
 
     fn list_files(&self) -> vfs::VfsResult<Vec<VfsEntry>> {
-        let files = self.children.lock().clone();
+        let files = self.children.lock().values().cloned().collect();
         Ok(files)
+    }
+
+    fn remove(&self, name: &str) -> vfs::VfsResult<()> {
+        let mut children = self.children.lock();
+        children.remove(name).ok_or(VfsError::NotFound)?;
+        Ok(())
     }
 }

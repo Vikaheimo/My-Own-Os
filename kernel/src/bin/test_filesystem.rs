@@ -38,13 +38,14 @@ fn main(boot_info: &'static mut BootInfo) -> ! {
     let size = file.read(0, &mut buffer).unwrap();
     assert_eq!(&buffer[..size], TEXT);
 
-    let binding = root
+    let folder = root
         .create(VirtualFileMetadata {
             is_dir: true,
             name: "test".into(),
         })
+        .unwrap()
+        .into_directory()
         .unwrap();
-    let folder = binding.into_directory().unwrap();
 
     let file2 = folder
         .create(VirtualFileMetadata {
@@ -61,8 +62,13 @@ fn main(boot_info: &'static mut BootInfo) -> ! {
     assert_eq!(&buffer[..size], TEXT);
 
     let files = root.list_files().unwrap();
-
     assert_eq!(files.len(), 2);
+
+    root.remove("test.txt").unwrap();
+
+    let files = root.list_files().unwrap();
+    assert_eq!(files.len(), 1);
+
 
     info!("Filesystem test ok!");
 

@@ -106,6 +106,8 @@ pub trait VfsFile: VfsNode {
 pub trait VfsDirectory: VfsNode {
     fn create(&self, metadata: VirtualFileMetadata) -> VfsResult<VfsEntry>;
 
+    fn remove(&self, name: &str) -> VfsResult<()>;
+
     fn find(&self, name: &str) -> VfsResult<Option<VfsEntry>>;
 
     fn list_files(&self) -> VfsResult<Vec<VfsEntry>>;
