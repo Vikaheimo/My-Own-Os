@@ -2,6 +2,37 @@ use alloc::{boxed::Box, string::String, sync::Arc, vec::Vec};
 
 pub trait VirtualFilesystem {
     fn root(&self) -> Arc<dyn VfsDirectory>;
+
+    fn resolve_path(&self, path: &VfsPath) -> VfsResult<VfsEntry>;
+}
+
+pub struct VfsPath {
+    absolute: bool,
+    components: Vec<Box<str>>,
+}
+
+impl VfsPath {
+    pub fn parse(path: &str) -> Self {
+        let absolute = path.starts_with('/');
+        let components = path
+            .split('/')
+            .filter(|element| !element.is_empty())
+            .map(Box::from)
+            .collect();
+
+        Self {
+            absolute,
+            components,
+        }
+    }
+
+    pub fn is_absolute(&self) -> bool {
+        self.absolute
+    }
+
+    pub fn components(&self) -> &[Box<str>] {
+        &self.components
+    }
 }
 
 #[derive(Debug, Clone)]
@@ -108,7 +139,7 @@ pub trait VfsDirectory: VfsNode {
 
     fn remove(&self, name: &str) -> VfsResult<()>;
 
-    fn find(&self, name: &str) -> VfsResult<Option<VfsEntry>>;
+    fn find(&self, name: &str) -> VfsResult<VfsEntry>;
 
     fn list_files(&self) -> VfsResult<Vec<VfsEntry>>;
 }

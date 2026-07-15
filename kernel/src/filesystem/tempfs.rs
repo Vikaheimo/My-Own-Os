@@ -1,4 +1,4 @@
-use crate::filesystem::vfs::{self, VfsEntry, VfsError, VfsNode};
+use crate::filesystem::vfs::{self, VfsEntry, VfsError, VfsNode, VfsPath};
 use alloc::{collections::btree_map::BTreeMap, string::String, sync::Arc, vec::Vec};
 use spin::Mutex;
 
@@ -26,6 +26,22 @@ impl Default for TempFilesystem {
 impl vfs::VirtualFilesystem for TempFilesystem {
     fn root(&self) -> Arc<dyn vfs::VfsDirectory> {
         self.root.clone()
+    }
+
+    fn resolve_path(&self, path: &VfsPath) -> vfs::VfsResult<VfsEntry> {
+        // We ignore non absolute paths for now
+        if !path.is_absolute() {
+            return Err(vfs::VfsError::NotFound);
+        }
+        let mut current = VfsEntry::Directory(self.root());
+        for component in path.components() {
+            let dir = current.into_directory()?;
+            let next = dir.find(component)?;
+
+            current = next;
+        }
+
+        Ok(current)
     }
 }
 
@@ -132,8 +148,12 @@ impl vfs::VfsDirectory for TempFsDirectory {
         Ok(new_child)
     }
 
-    fn find(&self, name: &str) -> vfs::VfsResult<Option<VfsEntry>> {
-        Ok(self.children.lock().get(name).cloned())
+    fn find(&self, name: &str) -> vfs::VfsResult<VfsEntry> {
+        self.children
+            .lock()
+            .get(name)
+            .cloned()
+            .ok_or(VfsError::NotFound)
     }
 
     fn list_files(&self) -> vfs::VfsResult<Vec<VfsEntry>> {
