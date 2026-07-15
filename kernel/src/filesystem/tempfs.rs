@@ -89,17 +89,12 @@ impl vfs::VfsFile for TempFsFile {
     fn write(&self, offset: usize, buffer: &[u8]) -> vfs::VfsResult<usize> {
         let mut data = self.data.lock();
 
-        if offset >= buffer.len() {
-            return Err(vfs::VfsError::OffsetOutsideData);
-        }
-
         let required_len = offset + buffer.len();
         if data.len() < required_len {
             data.resize(required_len, 0);
         }
 
         let end = offset + buffer.len();
-
         data[offset..end].copy_from_slice(buffer);
 
         Ok(buffer.len())
