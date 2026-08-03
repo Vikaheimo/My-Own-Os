@@ -12,9 +12,15 @@ pub struct Sleep {
 const NANOSECONDS_IN_SECOND: u128 = 1_000_000_000;
 
 impl Sleep {
+    /// Creates a new sleep future from a duration.
+    ///
+    /// # Panics
+    ///
+    /// Panics if the monotonic tick frequency is 0 or if the sleep duration
+    /// is too large and causes multiplication overflow.
     #[allow(clippy::expect_used)]
     pub fn new(duration: core::time::Duration) -> Self {
-        let freq = crate::time::MONOTONIC_TICK_FREQUENCY.load(Ordering::Relaxed) as u128;
+        let freq = u128::from(crate::time::MONOTONIC_TICK_FREQUENCY.load(Ordering::Relaxed));
 
         assert!(freq != 0, "Sleep frequency is 0");
 

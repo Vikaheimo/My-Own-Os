@@ -100,6 +100,7 @@ impl FramebufferWriter {
     /// # Returns
     ///
     /// A new `FramebufferWriter` instance ready for drawing.
+    #[must_use]
     pub fn new(value: FrameBuffer) -> Self {
         let pixel_format = value.info().pixel_format;
         match pixel_format {
@@ -107,7 +108,7 @@ impl FramebufferWriter {
             PixelFormat::Bgr => log::info!("Using bgr pixel format"),
             PixelFormat::U8 => log::info!("Using u8 pixel format"),
             format => log::error!("Unknown pixel format: {format:?}"),
-        };
+        }
         let info = value.info();
 
         Self {
@@ -190,6 +191,10 @@ impl FramebufferWriter {
     ///
     /// Uses Bresenham's algorithm to efficiently rasterize the line
     /// by only drawing pixels within the framebuffer bounds.
+    /// 
+    /// # Panics
+    ///
+    /// Panics if any coordinate in `position1` or `position2` exceeds `i64::MAX`.
     #[allow(clippy::expect_used)]
     pub fn draw_line(&mut self, position1: Point, position2: Point, color: Color) {
         let mut x0 = i64::try_from(position1.x).expect("Expected x0 to fit i64::MAX!");

@@ -19,10 +19,12 @@ static TSS: Once<TaskStateSegment> = Once::new();
 
 #[derive(Debug, Clone, Copy)]
 struct Selectors {
-    code_selector: SegmentSelector,
-    data_selector: SegmentSelector,
-    tss_selector: SegmentSelector,
+    code: SegmentSelector,
+    data: SegmentSelector,
+    tss: SegmentSelector,
 }
+
+// TODO: Refactor the GDT into its own struct
 
 static GDT: Once<(GlobalDescriptorTable, Selectors)> = Once::new();
 
@@ -47,9 +49,9 @@ pub fn init() {
         (
             gdt,
             Selectors {
-                code_selector,
-                tss_selector,
-                data_selector,
+                code: code_selector,
+                data: data_selector,
+                tss: tss_selector,
             },
         )
     });
@@ -59,10 +61,10 @@ pub fn init() {
     // SAFETY: The GDT and TSS were initialized above and the selectors
     // come from that loaded GDT, so loading segment registers and TSS is valid.
     unsafe {
-        CS::set_reg(gdt.1.code_selector);
-        x86_64::instructions::segmentation::SS::set_reg(gdt.1.data_selector);
-        load_tss(gdt.1.tss_selector);
+        CS::set_reg(gdt.1.code);
+        x86_64::instructions::segmentation::SS::set_reg(gdt.1.data);
+        load_tss(gdt.1.tss);
     }
 
-    info!("GDT loaded")
+    info!("GDT loaded");
 }

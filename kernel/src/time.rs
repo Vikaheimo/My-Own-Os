@@ -41,6 +41,10 @@ const NS_PER_SEC: u64 = 1_000_000_000;
 ///
 /// This function must be called once during early boot
 /// before calling [`uptime_ns`] or [`uptime_ms`].
+///
+/// # Panics
+///
+/// This function panics if the calculated TSC-frequency is 0.
 pub fn init() {
     let freq = tsc_frequency_from_cpuid().unwrap_or_else(calibrate_tsc_using_pit);
 
@@ -86,9 +90,10 @@ fn calibrate_tsc_using_pit() -> u64 {
     let end_tsc = rdtsc();
     let delta_tsc = end_tsc - start_tsc;
 
-    let tsc_frequency = (delta_tsc * crate::interrupt::PIT_FREQUENCY_HZ as u64) / CALIBRATION_TICKS;
+    let tsc_frequency =
+        (delta_tsc * u64::from(crate::interrupt::PIT_FREQUENCY_HZ)) / CALIBRATION_TICKS;
 
-    log::info!("Calibrated TSC frequency using PIT: {} Hz", tsc_frequency);
+    log::info!("Calibrated TSC frequency using PIT: {tsc_frequency} Hz");
 
     tsc_frequency
 }
@@ -115,6 +120,7 @@ fn calibrate_tsc_using_pit() -> u64 {
 /// - Some firmware implementations return zeroed values.
 /// - This method is preferred when available because it is fast
 ///   and does not require active timing calibration.
+#[must_use]
 pub fn tsc_frequency_from_cpuid() -> Option<u64> {
     let max_leaf = core::arch::x86_64::__cpuid(0).eax;
 
@@ -124,17 +130,17 @@ pub fn tsc_frequency_from_cpuid() -> Option<u64> {
 
     let leaf = core::arch::x86_64::__cpuid(0x15);
 
-    let denom = leaf.eax;
-    let numer = leaf.ebx;
+    let denominator = leaf.eax;
+    let numerator = leaf.ebx;
     let crystal = leaf.ecx;
 
-    if denom == 0 || numer == 0 || crystal == 0 {
+    if denominator == 0 || numerator == 0 || crystal == 0 {
         return None;
     }
 
-    let freq = (crystal as u64 * numer as u64) / denom as u64;
+    let freq = (u64::from(crystal) * u64::from(numerator)) / u64::from(denominator);
 
-    log::info!("TSC frequency from CPUID: {} Hz", freq);
+    log::info!("TSC frequency from CPUID: {freq} Hz");
 
     Some(freq)
 }
@@ -161,7 +167,7 @@ pub fn uptime() -> core::time::Duration {
         return core::time::Duration::ZERO;
     }
 
-    let cycles = rdtsc() as u128;
+    let cycles = u128::from(rdtsc());
 
     // Convert cycles to nanoseconds:
     //
@@ -169,7 +175,7 @@ pub fn uptime() -> core::time::Duration {
     // nanos   = (cycles * 1_000_000_000) / freq
     //
     // Use u128 to prevent overflow during multiplication.
-    let nanos = (cycles * NS_PER_SEC as u128) / freq as u128;
+    let nanos = (cycles * u128::from(NS_PER_SEC)) / u128::from(freq);
 
     #[allow(clippy::expect_used)]
     core::time::Duration::from_nanos(
@@ -180,13 +186,13 @@ pub fn uptime() -> core::time::Duration {
 /// Reads the CPU Time Stamp Counter (TSC).
 ///
 /// The TSC is a 64-bit register that increments every CPU cycle.
-/// On modern x86_64 systems with an *invariant TSC*, it increments
+/// On modern `x86_64` systems with an *invariant TSC*, it increments
 /// at a constant rate independent of CPU frequency scaling.
 ///
 /// # Safety
 ///
 /// This function executes the `RDTSC` instruction.
-/// It is safe to call on x86_64 systems that support TSC.
+/// It is safe to call on `x86_64` systems that support TSC.
 ///
 /// # Notes
 ///
@@ -194,6 +200,7 @@ pub fn uptime() -> core::time::Duration {
 /// - If strict ordering is required, use `RDTSCP` or a serializing
 ///   instruction such as `LFENCE` before `RDTSC`.
 #[inline]
+#[must_use]
 pub fn rdtsc() -> u64 {
     // Safety:
     // `_rdtsc()` is unsafe because it directly emits a CPU instruction.
@@ -221,6 +228,7 @@ pub fn rdtsc() -> u64 {
 /// let period = frequency_to_period(1_000);
 /// assert_eq!(period, Duration::from_millis(1));
 /// ```
+#[must_use]
 pub const fn frequency_to_period(frequency: u64) -> Duration {
     if frequency == 0 {
         return Duration::ZERO;

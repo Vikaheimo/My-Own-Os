@@ -43,6 +43,10 @@ pub fn init(physical_offset: u64) {
 }
 
 #[allow(clippy::expect_used)]
+/// Calibrates the LAPIC timer frequency.
+///
+/// # Panics
+/// Panics if the global LAPIC instance has not been initialized.
 pub fn calibrate() {
     const CALIBRATION_DURATION_MS: u64 = 100;
     const CALIBRATION_DURATION: Duration = Duration::from_millis(CALIBRATION_DURATION_MS);
@@ -79,6 +83,7 @@ unsafe impl Send for Lapic {}
 unsafe impl Sync for Lapic {}
 
 impl Lapic {
+    #[must_use]
     pub fn new(base: u64) -> Self {
         Self {
             base: base as *mut u32,
@@ -101,7 +106,7 @@ impl Lapic {
     }
 
     pub fn enable(&self, spurious_vector: u8) {
-        self.write(REG_SPURIOUS, 0x100 | spurious_vector as u32);
+        self.write(REG_SPURIOUS, 0x100 | u32::from(spurious_vector));
     }
 
     pub fn eoi(&self) {
@@ -113,11 +118,18 @@ impl Lapic {
         self.write(REG_DIVIDE, DIVIDE_BY_1);
 
         // one-shot mode
-        self.write(REG_LVT_TIMER, crate::interrupt::LAPIC_TIMER_VECTOR as u32);
+        self.write(
+            REG_LVT_TIMER,
+            u32::from(crate::interrupt::LAPIC_TIMER_VECTOR),
+        );
 
         self.write(REG_INITIAL_COUNT, INITIAL_COUNT);
     }
 
+    /// Finishes LAPIC timer calibration and stores the ticks per millisecond.
+    ///
+    /// # Panics
+    /// Panics if the elapsed duration is zero or if the elapsed milliseconds overflow a u32.
     pub fn finish_calibration(&self, elapsed: Duration) {
         let current = self.read(REG_CURRENT_COUNT);
         let elapsed_ticks = INITIAL_COUNT - current;
@@ -131,15 +143,19 @@ impl Lapic {
 
         self.ticks_per_ms.store(frequency, Ordering::Release);
 
-        log::info!("LAPIC calibrated: {} ticks/ms", frequency);
+        log::info!("LAPIC calibrated: {frequency} ticks/ms");
     }
 
     pub fn ticks_per_ms(&self) -> u32 {
         self.ticks_per_ms.load(Ordering::Acquire)
     }
 
+    /// Starts the LAPIC timer in periodic mode.
+    ///
+    /// # Panics
+    /// Panics if the period is zero or if the calculated initial count overflows a u32.
     pub fn start_periodic(&self, period: Duration) {
-        let ticks_per_ms = self.ticks_per_ms() as u128;
+        let ticks_per_ms = u128::from(self.ticks_per_ms());
         let period_ns = period.as_nanos();
 
         assert!(period_ns > 0, "LAPIC period must be non-zero!");
@@ -154,7 +170,7 @@ impl Lapic {
 
         self.write(
             REG_LVT_TIMER,
-            crate::interrupt::LAPIC_TIMER_VECTOR as u32 | PERIODIC_MODE,
+            u32::from(crate::interrupt::LAPIC_TIMER_VECTOR) | PERIODIC_MODE,
         );
 
         self.write(REG_INITIAL_COUNT, ticks);

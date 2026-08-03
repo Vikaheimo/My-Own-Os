@@ -8,7 +8,7 @@ const FRAME_SIZE: usize = 4096;
 /**
 We want to skip the first 1MiB for legacy reasons and debugging
  */
-const MIN_USABLE_ADDR: u64 = 0x100000;
+const MIN_USABLE_ADDR: u64 = 0x10_0000;
 
 #[derive(Debug)]
 pub struct BootInfoFrameAllocator {

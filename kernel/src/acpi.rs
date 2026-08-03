@@ -50,14 +50,14 @@ impl KernelAcpiHandler {
     }
 
     #[inline]
-    fn io_read<T: x86_64::instructions::port::PortRead>(&self, port: u16) -> T {
+    fn io_read<T: x86_64::instructions::port::PortRead>(port: u16) -> T {
         // SAFETY: ACPI AML may require port I/O, and the platform firmware
         // provides valid port addresses for these accesses.
         unsafe { x86_64::instructions::port::PortReadOnly::<T>::new(port).read() }
     }
 
     #[inline]
-    fn io_write<T: x86_64::instructions::port::PortWrite>(&self, port: u16, value: T) {
+    fn io_write<T: x86_64::instructions::port::PortWrite>(port: u16, value: T) {
         // SAFETY: ACPI AML may require port I/O, and the platform firmware
         // provides valid port addresses for these accesses.
         unsafe { x86_64::instructions::port::PortWriteOnly::<T>::new(port).write(value) }
@@ -140,27 +140,27 @@ impl acpi::Handler for KernelAcpiHandler {
     }
 
     fn read_io_u8(&self, port: u16) -> u8 {
-        self.io_read(port)
+        Self::io_read(port)
     }
 
     fn read_io_u16(&self, port: u16) -> u16 {
-        self.io_read(port)
+        Self::io_read(port)
     }
 
     fn read_io_u32(&self, port: u16) -> u32 {
-        self.io_read(port)
+        Self::io_read(port)
     }
 
     fn write_io_u8(&self, port: u16, value: u8) {
-        self.io_write(port, value);
+        Self::io_write(port, value);
     }
 
     fn write_io_u16(&self, port: u16, value: u16) {
-        self.io_write(port, value);
+        Self::io_write(port, value);
     }
 
     fn write_io_u32(&self, port: u16, value: u32) {
-        self.io_write(port, value);
+        Self::io_write(port, value);
     }
     fn read_pci_u8(&self, _address: acpi::PciAddress, _offset: u16) -> u8 {
         panic!("ACPI handler requested PCI read before PCI bus initialization!");
@@ -191,7 +191,10 @@ impl acpi::Handler for KernelAcpiHandler {
     fn stall(&self, microseconds: u64) {
         let start = crate::time::uptime();
 
-        while crate::time::uptime() - start < core::time::Duration::from_micros(microseconds) {
+        #[allow(clippy::expect_used)]
+        while crate::time::uptime().checked_sub(start).expect("uptime overflow")
+            < core::time::Duration::from_micros(microseconds)
+        {
             core::hint::spin_loop();
         }
     }

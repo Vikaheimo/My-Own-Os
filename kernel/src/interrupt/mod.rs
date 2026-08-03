@@ -56,24 +56,24 @@ pub fn init() {
 
         init_pit(PIT_FREQUENCY_HZ);
 
-        info!("PIC enabled")
+        info!("PIC enabled");
     }
 }
 
 extern "x86-interrupt" fn breakpoint_handler(stack_frame: InterruptStackFrame) {
     serial_println!("EXCEPTION: Breakpoint");
-    serial_println!("{:#?}", stack_frame)
+    serial_println!("{stack_frame:#?}");
 }
 
 extern "x86-interrupt" fn divide_by_zero_handler(stack_frame: InterruptStackFrame) {
-    panic!("EXCEPTION: DIVIDE BY ZERO\n{:#?}", stack_frame);
+    panic!("EXCEPTION: DIVIDE BY ZERO\n{stack_frame:#?}");
 }
 
 extern "x86-interrupt" fn double_fault_handler(
     stack_frame: InterruptStackFrame,
     _error_code: u64,
 ) -> ! {
-    panic!("EXCEPTION: DOUBLE FAULT\n {:#?}", stack_frame)
+    panic!("EXCEPTION: DOUBLE FAULT\n {stack_frame:#?}")
 }
 
 extern "x86-interrupt" fn page_fault_handler(
@@ -92,10 +92,7 @@ extern "x86-interrupt" fn general_protection_fault(
     stack_frame: InterruptStackFrame,
     error_code: u64,
 ) {
-    panic!(
-        "EXCEPTION: GENERAL PROTECTION FAULT\nError Code: {:#x}\n{:#?}",
-        error_code, stack_frame
-    )
+    panic!("EXCEPTION: GENERAL PROTECTION FAULT\nError Code: {error_code:#x}\n{stack_frame:#?}");
 }
 
 extern "x86-interrupt" fn lapic_spurious_handler(stack_frame: InterruptStackFrame) {
@@ -162,6 +159,10 @@ extern "x86-interrupt" fn timer_interrupt_handler(_stack_frame: InterruptStackFr
 /// This function performs raw I/O port writes to hardware ports
 /// `0x43` (command) and `0x40` (channel 0 data), which is required
 /// to configure the PIT.
+///
+/// # Panics
+///
+/// If the Pit frequency is `0` or higher than `65536`
 pub fn init_pit(frequency: u32) {
     #[allow(clippy::expect_used)]
     let raw_divisor = 1_193_182 / frequency;

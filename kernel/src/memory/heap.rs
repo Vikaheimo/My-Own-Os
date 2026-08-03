@@ -13,6 +13,11 @@ pub static GLOBAL_HEAP_ALLOCATOR: Allocator = Allocator::new();
 pub const HEAP_START: u64 = 0x_4444_4444_0000;
 pub const HEAP_SIZE: u64 = 100 * 1024;
 
+/// Initializes the heap by mapping physical frames to the heap virtual address range.
+///
+/// # Errors
+///
+/// Returns a `MapToError<Size4KiB>` if frame allocation fails or if mapping fails.
 pub fn init_heap(
     mapper: &mut impl Mapper<Size4KiB>,
     frame_allocator: &mut impl FrameAllocator<Size4KiB>,

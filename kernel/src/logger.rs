@@ -72,6 +72,11 @@ impl log::Log for KernelLogger {
     }
 }
 
+/// Method that initializes the logger for the kernel.
+///
+/// # Panics
+///
+/// If the logger fails to initialize.
 pub fn init() {
     #[allow(clippy::expect_used)]
     log::set_logger(&LOGGER)
@@ -109,10 +114,10 @@ impl From<core::time::Duration> for LogDurationFormat {
         let milliseconds = value.subsec_millis();
 
         Self {
-            milliseconds,
-            seconds,
-            minutes,
             hours,
+            minutes,
+            seconds,
+            milliseconds,
         }
     }
 }

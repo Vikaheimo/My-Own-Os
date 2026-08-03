@@ -16,24 +16,28 @@ pub struct AsyncExecutor {
 }
 
 impl AsyncExecutor {
+    /// Spawns a new task in the executor.
+    ///
+    /// # Panics
+    ///
+    /// Panics if a task with the same [`TaskId`] already exists, or if the task queue is full.
     pub fn spawn(&mut self, task: Task) {
         let task_id = task.id;
-        log::debug!("Spawning new task {:?}", task_id);
+        log::debug!("Spawning new task {task_id:?}");
 
-        if self.tasks.insert(task_id, task).is_some() {
-            // Panicking here is ok, as we ne know this should never happen
-            // as long as there is not a bug with our code
-            panic!(
-                "Tried to add a task with ID ({:?}) which already exists!",
-                task_id
-            );
-        }
+        // Panicking here is ok, as we ne know this should never happen
+        // as long as there is not a bug with our code
+        assert!(
+            self.tasks.insert(task_id, task).is_none(),
+            "Tried to add a task with ID ({task_id:?}) which already exists!"
+        );
 
         #[allow(clippy::expect_used)]
         self.task_queue.push(task_id).expect("Task queue full!");
     }
 
     #[allow(clippy::new_without_default)]
+    #[must_use]
     pub fn new() -> Self {
         Self {
             tasks: BTreeMap::new(),
@@ -61,7 +65,7 @@ impl AsyncExecutor {
                 .or_insert(TaskWaker::waker(task_id, task_queue.clone()));
             let mut context = Context::from_waker(waker);
             match task.poll(&mut context) {
-                core::task::Poll::Ready(_) => {
+                core::task::Poll::Ready(()) => {
                     tasks.remove(&task_id);
                     waker_cache.remove(&task_id);
                 }

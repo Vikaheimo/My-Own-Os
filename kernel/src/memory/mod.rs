@@ -37,6 +37,7 @@ pub struct MemoryContext {
 /// If these guarantees are violated, undefined behavior may occur in the
 /// paging or frame allocation code.
 #[allow(clippy::expect_used)]
+#[must_use]
 pub fn init(physical_offset: u64, memory_regions: &'static MemoryRegions) -> MemoryContext {
     let mut frame_allocator =
         frame_allocator::BootInfoFrameAllocator::init(memory_regions, physical_offset);

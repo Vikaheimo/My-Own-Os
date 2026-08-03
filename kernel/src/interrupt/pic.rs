@@ -40,6 +40,7 @@ pub unsafe fn init_pics() {
     }
 }
 
+#[allow(unused)]
 pub unsafe fn disable_pic() {
     use x86_64::instructions::port::Port;
 

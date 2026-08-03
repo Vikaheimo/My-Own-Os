@@ -16,6 +16,8 @@
 #![warn(clippy::expect_used)]
 #![deny(clippy::panicking_unwrap)]
 #![warn(clippy::indexing_slicing)]
+#![warn(clippy::pedantic)]
+#![allow(clippy::manual_let_else)]
 
 extern crate alloc;
 
@@ -59,6 +61,7 @@ pub struct KernelInfo {
     pub acpi: acpi::KernelAcpiHandler,
 }
 
+#[allow(clippy::must_use_candidate)]
 pub fn init(boot_info: BootInfo) -> KernelInfo {
     serial::init();
     logger::init();

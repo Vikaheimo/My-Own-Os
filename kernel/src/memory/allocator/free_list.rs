@@ -95,7 +95,7 @@ unsafe impl Send for FreeListAllocator {}
 // respecting requested alignments and tracking block boundaries precisely.
 unsafe impl KernelAllocator for FreeListAllocator {
     unsafe fn alloc(&mut self, layout: Layout) -> *mut u8 {
-        log::trace!("New allocation: {:?}", layout);
+        log::trace!("New allocation: {layout:?}");
 
         // SAFETY: `init` handles its own internal safety verification using confirmed
         // heap boundaries before initializing the free list structure.
@@ -149,7 +149,7 @@ unsafe impl KernelAllocator for FreeListAllocator {
                     AllocationHeader::write_header(aligned_start, current, block_size);
                 }
 
-                log::trace!("Allocated {} bytes at 0x{:x}", block_size, block_start);
+                log::trace!("Allocated {block_size} bytes at 0x{block_start:x}");
 
                 return aligned_start as *mut u8;
             }
@@ -184,11 +184,7 @@ unsafe impl KernelAllocator for FreeListAllocator {
                 AllocationHeader::write_header(aligned_start, current, allocated_total_size);
             }
 
-            log::trace!(
-                "Allocated {} bytes at 0x{:x}",
-                allocated_total_size,
-                block_start
-            );
+            log::trace!("Allocated {allocated_total_size} bytes at 0x{block_start:x}");
 
             return aligned_start as *mut u8;
         }
