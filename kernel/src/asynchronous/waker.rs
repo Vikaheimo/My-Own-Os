@@ -23,7 +23,9 @@ impl TaskWaker {
 
     fn wake_task(&self) {
         #[allow(clippy::expect_used)]
-        self.task_queue.push(self.task_id).expect("Task_queue full!");
+        self.task_queue
+            .push(self.task_id)
+            .expect("Task_queue full!");
     }
 }
 

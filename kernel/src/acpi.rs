@@ -192,7 +192,9 @@ impl acpi::Handler for KernelAcpiHandler {
         let start = crate::time::uptime();
 
         #[allow(clippy::expect_used)]
-        while crate::time::uptime().checked_sub(start).expect("uptime overflow")
+        while crate::time::uptime()
+            .checked_sub(start)
+            .expect("uptime overflow")
             < core::time::Duration::from_micros(microseconds)
         {
             core::hint::spin_loop();

@@ -191,7 +191,7 @@ impl FramebufferWriter {
     ///
     /// Uses Bresenham's algorithm to efficiently rasterize the line
     /// by only drawing pixels within the framebuffer bounds.
-    /// 
+    ///
     /// # Panics
     ///
     /// Panics if any coordinate in `position1` or `position2` exceeds `i64::MAX`.
