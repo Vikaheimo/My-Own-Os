@@ -24,9 +24,12 @@ struct Selectors {
     tss: SegmentSelector,
 }
 
-// TODO: Refactor the GDT into its own struct
+struct Gdt {
+    selectors: Selectors,
+    gdt: GlobalDescriptorTable,
+}
 
-static GDT: Once<(GlobalDescriptorTable, Selectors)> = Once::new();
+static GDT: Once<Gdt> = Once::new();
 
 pub fn init() {
     #[allow(clippy::indexing_slicing)]
@@ -46,24 +49,24 @@ pub fn init() {
         let tss_selector = gdt.append(Descriptor::tss_segment(tss));
         let data_selector = gdt.append(Descriptor::kernel_data_segment());
 
-        (
+        Gdt {
             gdt,
-            Selectors {
+            selectors: Selectors {
                 code: code_selector,
                 data: data_selector,
                 tss: tss_selector,
             },
-        )
+        }
     });
 
-    gdt.0.load();
+    gdt.gdt.load();
 
     // SAFETY: The GDT and TSS were initialized above and the selectors
     // come from that loaded GDT, so loading segment registers and TSS is valid.
     unsafe {
-        CS::set_reg(gdt.1.code);
-        x86_64::instructions::segmentation::SS::set_reg(gdt.1.data);
-        load_tss(gdt.1.tss);
+        CS::set_reg(gdt.selectors.code);
+        x86_64::instructions::segmentation::SS::set_reg(gdt.selectors.data);
+        load_tss(gdt.selectors.tss);
     }
 
     info!("GDT loaded");
