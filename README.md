@@ -4,7 +4,7 @@ This is a hobby x86-64 kernel / operating system project written in rust. Maybe 
 
 ## Setup required
 
-1. Rust (obliviously) with the nightly toolchain.
+1. Rust (obviously) with the nightly toolchain.
 2. QEMU for running the os.
 
 The project is currently split using workspaces. The root workspace is just a convenient wrapper for running the kernel. The kernel workspace contains all of the actual code (for now).
