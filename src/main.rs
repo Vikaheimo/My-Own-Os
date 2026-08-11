@@ -12,6 +12,8 @@ const TEST_NAMES: &[&str] = &[
 
 const OPEN_DISPLAY_IN_TESTS: bool = false;
 const OPEN_DISPLAY_IN_NORMAL: bool = true;
+const KVM_ENABLED: bool = false;
+const CPU: &str = "qemu64";
 
 fn main() {
     let args: Vec<String> = env::args().collect();
@@ -94,8 +96,12 @@ fn run_qemu(image: &str, uefi: bool, display: bool) -> i32 {
     cmd.arg("-serial").arg("mon:stdio");
     cmd.arg("-device")
         .arg("isa-debug-exit,iobase=0xf4,iosize=0x04");
-    cmd.arg("-enable-kvm");
-    cmd.arg("-cpu").arg("host");
+
+    if KVM_ENABLED {
+        cmd.arg("-enable-kvm");
+    }
+
+    cmd.arg("-cpu").arg(CPU);
     cmd.arg("-no-reboot");
 
     if uefi {
